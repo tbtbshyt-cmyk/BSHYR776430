@@ -1,0 +1,122 @@
+'use client';
+
+import { useState } from 'react';
+import type { Category, Product } from '@/lib/types';
+
+export function ProductForm({
+  initial,
+  categories,
+  onSubmit,
+  onCancel,
+}: {
+  initial?: Partial<Product>;
+  categories: Category[];
+  onSubmit: (data: Partial<Product>) => Promise<void>;
+  onCancel: () => void;
+}) {
+  const [title, setTitle] = useState(initial?.title_ar ?? '');
+  const [desc, setDesc] = useState(initial?.description_ar ?? '');
+  const [price, setPrice] = useState(initial?.price?.toString() ?? '');
+  const [compare, setCompare] = useState(initial?.compare_at_price?.toString() ?? '');
+  const [stock, setStock] = useState(initial?.stock_quantity?.toString() ?? '0');
+  const [categoryId, setCategoryId] = useState(initial?.category_id ?? categories[0]?.id ?? '');
+  const [sizes, setSizes] = useState((initial?.sizes ?? ['one-size']).join(','));
+  const [images, setImages] = useState((initial?.images ?? []).join('\n'));
+  const [barcode, setBarcode] = useState(initial?.barcode ?? '');
+  const [featured, setFeatured] = useState(initial?.is_featured ?? false);
+  const [active, setActive] = useState(initial?.is_active ?? true);
+  const [saving, setSaving] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await onSubmit({
+        title_ar: title,
+        description_ar: desc,
+        price: Number(price),
+        compare_at_price: compare ? Number(compare) : null,
+        stock_quantity: Number(stock),
+        category_id: categoryId || null,
+        sizes: sizes.split(',').map((s) => s.trim()).filter(Boolean),
+        images: images.split('\n').map((s) => s.trim()).filter(Boolean),
+        barcode: barcode.trim() || null,
+        is_featured: featured,
+        is_active: active,
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <form onSubmit={submit} className="card space-y-4 p-6">
+      <div className="grid gap-4 md:grid-cols-2">
+        <label className="block">
+          <span className="mb-1 block text-sm font-semibold">اسم المنتج *</span>
+          <input value={title} onChange={(e) => setTitle(e.target.value)} required className="input-field" />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-sm font-semibold">الفئة</span>
+          <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className="input-field">
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>{c.name_ar}</option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      <label className="block">
+        <span className="mb-1 block text-sm font-semibold">الوصف</span>
+        <textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={3} className="input-field resize-none" />
+      </label>
+
+      <div className="grid gap-4 md:grid-cols-4">
+        <label className="block">
+          <span className="mb-1 block text-sm font-semibold">السعر *</span>
+          <input type="number" value={price} onChange={(e) => setPrice(e.target.value)} required className="input-field" />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-sm font-semibold">السعر قبل الخصم</span>
+          <input type="number" value={compare} onChange={(e) => setCompare(e.target.value)} className="input-field" />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-sm font-semibold">المخزون</span>
+          <input type="number" value={stock} onChange={(e) => setStock(e.target.value)} className="input-field" />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-sm font-semibold">الباركود</span>
+          <input value={barcode} onChange={(e) => setBarcode(e.target.value)} placeholder="EAN-13 / UPC" dir="ltr" className="input-field text-right" />
+        </label>
+      </div>
+
+      <label className="block">
+        <span className="mb-1 block text-sm font-semibold">المقاسات (مفصولة بفاصلة)</span>
+        <input value={sizes} onChange={(e) => setSizes(e.target.value)} placeholder="54, 56, 58" className="input-field" />
+      </label>
+
+      <label className="block">
+        <span className="mb-1 block text-sm font-semibold">روابط الصور (رابط في كل سطر)</span>
+        <textarea value={images} onChange={(e) => setImages(e.target.value)} rows={3} className="input-field resize-none" dir="ltr" />
+      </label>
+
+      <div className="flex flex-wrap gap-6">
+        <label className="flex items-center gap-2 text-sm font-semibold">
+          <input type="checkbox" checked={featured} onChange={(e) => setFeatured(e.target.checked)} className="h-4 w-4 accent-gold-400" />
+          منتج مميز
+        </label>
+        <label className="flex items-center gap-2 text-sm font-semibold">
+          <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} className="h-4 w-4 accent-gold-400" />
+          منشور (نشط)
+        </label>
+      </div>
+
+      <div className="flex gap-3 pt-2">
+        <button type="submit" disabled={saving} className="btn-gold">
+          {saving ? 'جاري الحفظ...' : 'حفظ المنتج'}
+        </button>
+        <button type="button" onClick={onCancel} className="btn-ghost">إلغاء</button>
+      </div>
+    </form>
+  );
+}

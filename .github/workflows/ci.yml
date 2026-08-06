@@ -1,0 +1,56 @@
+name: CI — فحص الجودة والبناء
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# منع تشغيلات متزامنة للفرع نفسه (يلغي الأقدم لصالح الأحدث)
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# أقل الصلاحيات اللازمة (principle of least privilege)
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: store
+
+jobs:
+  quality:
+    name: Lint · TypeScript · Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: سحب الكود
+        uses: actions/checkout@v4
+
+      - name: تثبيت Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: store/package-lock.json
+
+      - name: تثبيت الاعتمادات
+        run: npm ci
+
+      - name: فحص ESLint
+        run: npm run lint
+
+      - name: فحص TypeScript
+        run: npx tsc --noEmit
+
+      - name: البناء الإنتاجي
+        run: npm run build
+        env:
+          # يسمح بالبناء في بيئة CI دون مفاتيح حقيقية
+          # (المتجر يعمل على البيانات التجريبية المحلية عند غياب المفاتيح)
+          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          NEXT_TELEMETRY_DISABLED: '1'
