@@ -44,3 +44,15 @@ npm run dev
 
 التفاصيل الكاملة في [`store/TECHNICAL_MAINTENANCE.md`](store/TECHNICAL_MAINTENANCE.md)
 ودليل النشر في [`store/VERCEL_DEPLOY.md`](store/VERCEL_DEPLOY.md).
+
+## ترتيب تشغيل ملفات SQL (محدّث)
+
+```
+1. abu_bashar_schema.sql
+2. abubashar_rpc.sql
+3. abubashar_v2_banners_barcode_proof.sql
+4. abubashar_v3_security_hardening.sql
+5. abubashar_v4_role_metadata_sync.sql
+6. abubashar_v5_scaling.sql   ← فهارس الأداء، عرض ملخص الطلبات، سجل الحالات
+7. abubashar_seed.sql
+```

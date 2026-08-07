@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import type { Category, Product } from '@/lib/types';
+import { ImageUploader } from './ImageUploader';
 
 export function ProductForm({
   initial,
@@ -21,7 +22,7 @@ export function ProductForm({
   const [stock, setStock] = useState(initial?.stock_quantity?.toString() ?? '0');
   const [categoryId, setCategoryId] = useState(initial?.category_id ?? categories[0]?.id ?? '');
   const [sizes, setSizes] = useState((initial?.sizes ?? ['one-size']).join(','));
-  const [images, setImages] = useState((initial?.images ?? []).join('\n'));
+  const [images, setImages] = useState<string[]>(initial?.images ?? []);
   const [barcode, setBarcode] = useState(initial?.barcode ?? '');
   const [featured, setFeatured] = useState(initial?.is_featured ?? false);
   const [active, setActive] = useState(initial?.is_active ?? true);
@@ -39,7 +40,7 @@ export function ProductForm({
         stock_quantity: Number(stock),
         category_id: categoryId || null,
         sizes: sizes.split(',').map((s) => s.trim()).filter(Boolean),
-        images: images.split('\n').map((s) => s.trim()).filter(Boolean),
+        images,
         barcode: barcode.trim() || null,
         is_featured: featured,
         is_active: active,
@@ -95,10 +96,10 @@ export function ProductForm({
         <input value={sizes} onChange={(e) => setSizes(e.target.value)} placeholder="54, 56, 58" className="input-field" />
       </label>
 
-      <label className="block">
-        <span className="mb-1 block text-sm font-semibold">روابط الصور (رابط في كل سطر)</span>
-        <textarea value={images} onChange={(e) => setImages(e.target.value)} rows={3} className="input-field resize-none" dir="ltr" />
-      </label>
+      <div className="block">
+        <span className="mb-1 block text-sm font-semibold">صور المنتج</span>
+        <ImageUploader images={images} onChange={setImages} />
+      </div>
 
       <div className="flex flex-wrap gap-6">
         <label className="flex items-center gap-2 text-sm font-semibold">
