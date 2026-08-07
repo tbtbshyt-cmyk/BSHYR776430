@@ -18,11 +18,22 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
   try {
     const part = token.split('.')[1];
     if (!part) return null;
-    const json =
-      typeof atob === 'function'
-        ? atob(part.replace(/-/g, '+').replace(/_/g, '/'))
-        : Buffer.from(part, 'base64').toString('utf8');
-    return JSON.parse(json) as Record<string, unknown>;
+
+    // Base64URL -> Base64
+    const base64 = part.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+
+    let jsonStr: string | null = null;
+    if (typeof globalThis.atob === 'function') {
+      jsonStr = globalThis.atob(padded);
+    } else if (typeof (globalThis as any).Buffer === 'function') {
+      jsonStr = (globalThis as any).Buffer.from(padded, 'base64').toString('utf8');
+    } else {
+      return null;
+    }
+
+    if (jsonStr === null) return null;
+    return JSON.parse(jsonStr) as Record<string, unknown>;
   } catch {
     return null;
   }
