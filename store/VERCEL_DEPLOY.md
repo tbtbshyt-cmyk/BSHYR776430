@@ -130,3 +130,24 @@ vercel link          # ربط المشروع
 vercel env pull      # سحب متغيرات البيئة
 vercel --prod        # نشر مباشر
 ```
+
+---
+
+## النشر على Netlify (بديل Vercel)
+
+المشروع مهيّأ للنشر على Netlify عبر `netlify.toml` الموجود في الجذر:
+
+- **Base directory:** `store`
+- **Build command:** `npm run build`
+- **Publish directory:** `store/.next`
+- **Plugin:** `@netlify/plugin-nextjs` (مثبّت كاعتماد تطوير)
+- **Node:** 20
+
+في واجهة Netlify:
+1. Add new site → Import from Git → اختر المستودع.
+2. **Base directory:** `store`.
+3. Build command: `npm run build`, Publish: `.next`.
+4. أضف متغيرات البيئة `NEXT_PUBLIC_SUPABASE_URL` و`NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+
+ملاحظة: الـ Middleware لا يستورد `@supabase/ssr` (يفك تشفير كوكي الجلسة يدوياً)
+لتجنّب استخدام Node APIs غير المدعومة في Edge Runtime على Netlify.

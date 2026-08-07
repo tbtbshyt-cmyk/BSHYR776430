@@ -1,7 +1,4 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-
-type CookieToSet = { name: string; value: string; options?: Record<string, unknown> };
 
 const STAFF_ROUTES = ['/admin', '/delivery'];
 const CUSTOMER_ROUTES = ['/account'];
@@ -12,71 +9,97 @@ function matchRoute(pathname: string, routes: string[]) {
 }
 
 /**
- * حماية مركزية للمسارات على الخادم (Edge Middleware):
- *  - العملاء فقط: /account
- *  - الموظفون (admin/manager/delivery): /admin, /delivery
- *  - إذا كان المستخدم مسجلاً يُمنع من دخول /otp و /login
+ * فك تشفير جزء الحمولة (payload) من JWT بشكل آمن دون مكتبات خارجية.
+ * لا يتحقق من التوقيع هنا — التحقق الفعلي للجلسة يتم عند استعلام قاعدة البيانات
+ * عبر RLS باستخدام ملف تعريف الارتباط المرسل إلى Supabase. الغرض من الـ middleware
+ * هو الحماية الأولية للواجهات وتوجيه الأدوار فقط.
  */
-export async function middleware(request: NextRequest) {
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  try {
+    const part = token.split('.')[1];
+    if (!part) return null;
+    const json =
+      typeof atob === 'function'
+        ? atob(part.replace(/-/g, '+').replace(/_/g, '/'))
+        : Buffer.from(part, 'base64').toString('utf8');
+    return JSON.parse(json) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+function getSupabaseSession(request: NextRequest): {
+  isAuthed: boolean;
+  staffRole?: string;
+} {
+  // يخزّن Supabase الجلسة في كوكي باسم مشابه لـ sb-<ref>-auth-token
+  const tokenCookie = request.cookies
+    .getAll()
+    .find((c) => c.name.startsWith('sb-') && c.name.endsWith('-auth-token'));
+
+  if (!tokenCookie) return { isAuthed: false };
+
+  const payload = decodeJwtPayload(tokenCookie.value);
+  if (!payload) return { isAuthed: false };
+
+  const exp = typeof payload.exp === 'number' ? payload.exp * 1000 : 0;
+  if (exp && exp < Date.now()) return { isAuthed: false };
+
+  // دور الموظف يُخزَّن في app_metadata.staff_role (راجع abubashar_v4_role_metadata_sync.sql)
+  const appMeta = (payload.app_metadata ?? {}) as Record<string, unknown>;
+  const staffRole =
+    typeof appMeta.staff_role === 'string' ? appMeta.staff_role : undefined;
+
+  return { isAuthed: true, staffRole };
+}
+
+/**
+ * حماية مركزية للمسارات على حافة الشبكة (Edge Middleware).
+ * لا نستورد @supabase/ssr هنا لتجنّب استخدام Node APIs غير المدعومة في Edge Runtime
+ * (مثل process.version) التي تتسبب بفشل البناء على Netlify.
+ */
+export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  let response = NextResponse.next();
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  // الوضع التجريبي (بدون مفاتيح): نترك الحماية لمكوّنات العميل.
+  if (
+    !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  ) {
+    return NextResponse.next();
+  }
 
-  // بدون مفاتيح Supabase (وضع تجريبي) نتعامل مع الحماية في المتصفح فقط.
-  if (!url || !anonKey) return response;
-
-  const supabase = createServerClient(url, anonKey, {
-    cookies: {
-      getAll() {
-        return request.cookies.getAll();
-      },
-      setAll(cookiesToSet: CookieToSet[]) {
-        cookiesToSet.forEach(({ name, value, options }) => {
-          request.cookies.set(name, value);
-          response = NextResponse.next({ request });
-          response.cookies.set(name, value, options as any);
-        });
-      },
-    },
-  });
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { isAuthed, staffRole } = getSupabaseSession(request);
 
   const isStaffRoute = matchRoute(pathname, STAFF_ROUTES);
   const isCustomerRoute = matchRoute(pathname, CUSTOMER_ROUTES);
   const isAuthRoute = matchRoute(pathname, AUTH_ROUTES);
 
-  // غير مسجّل يحاول دخول مسار محمي → توجيه حسب نوع المسار
-  if (!user && (isStaffRoute || isCustomerRoute)) {
+  // غير مسجّل يحاول دخول مسار محمي
+  if (!isAuthed && (isStaffRoute || isCustomerRoute)) {
     const redirectTo = encodeURIComponent(pathname);
-    const loginPath = isStaffRoute ? `/login?next=${redirectTo}` : `/otp?next=${redirectTo}`;
+    const loginPath = isStaffRoute
+      ? `/login?next=${redirectTo}`
+      : `/otp?next=${redirectTo}`;
     return NextResponse.redirect(new URL(loginPath, request.url));
   }
 
-  // مسجّل مسبقاً يحاول دخول صفحة المصادقة → توجيه لمنطقته
-  if (user && isAuthRoute) {
-    const target = user.app_metadata?.staff_role === 'delivery' ? '/delivery'
-      : ['admin', 'manager'].includes(user.app_metadata?.staff_role) ? '/admin'
-      : '/account';
+  // مسجّل مسبقاً يحاول دخول صفحة مصادقة
+  if (isAuthed && isAuthRoute) {
+    const target =
+      staffRole === 'delivery'
+        ? '/delivery'
+        : staffRole === 'admin' || staffRole === 'manager'
+          ? '/admin'
+          : '/account';
     return NextResponse.redirect(new URL(target, request.url));
   }
 
-  // حماية الأدوار لمسارات الموظفين.
-  // الأدوار الحقيقية في جدول profiles (محمي بـ RLS)، لكننا نعكسها في app_metadata
-  // عند الدخول لتكون متاحة في الـ Middleware دون استعلام قاعدة بيانات.
-  if (user && isStaffRoute) {
-    const staffRole = user.app_metadata?.staff_role;
-    const isStaff =
-      staffRole === 'admin' || staffRole === 'manager' || staffRole === 'delivery';
-
-    if (!isStaff) {
+  // حماية الأدوار لمسارات الموظفين
+  if (isAuthed && isStaffRoute) {
+    if (!staffRole) {
       return NextResponse.redirect(new URL('/account', request.url));
     }
-    // /admin للإدارة فقط (وليس عمال التوصيل)
     if (
       (pathname === '/admin' || pathname.startsWith('/admin/')) &&
       staffRole === 'delivery'
@@ -85,10 +108,9 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  return response;
+  return NextResponse.next();
 }
 
 export const config = {
-  // المسارات التي يشملها الـ middleware (نستثني الأصول الثابتة و API العام)
   matcher: ['/account/:path*', '/admin/:path*', '/delivery/:path*', '/otp', '/login'],
 };
