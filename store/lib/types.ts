@@ -13,6 +13,23 @@ export type PaymentMethod =
   | 'bank_transfer'
   | 'local_wallet';
 
+export interface Campaign {
+  id: string;
+  name: string;
+  type: 'percentage' | 'fixed' | 'bogo';
+  value: number;            // نسبة الخصم أو المبلغ
+  product_ids: string[];    // المنتجات المشمولة (فارغ = الكل)
+  banner_title?: string;
+  banner_subtitle?: string;
+  banner_image?: string;
+  starts_at: string;
+  ends_at: string;
+  is_active: boolean;
+  clicks: number;
+  views: number;
+  created_at: string;
+}
+
 export interface Banner {
   id: string;
   title_ar: string;

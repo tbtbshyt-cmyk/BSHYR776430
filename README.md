@@ -55,5 +55,6 @@ npm run dev
 5. abubashar_v4_role_metadata_sync.sql
 6. abubashar_v5_scaling.sql          ← فهارس الأداء، عرض ملخص الطلبات، سجل الحالات
 7. abubashar_v6_storage_policies.sql ← حاويات الصور وسياسات التخزين
+7. abubashar_v7_marketing_scaling.sql
 8. abubashar_seed.sql
 ```

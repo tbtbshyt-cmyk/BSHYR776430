@@ -6,6 +6,7 @@ import {
   getDemoBanners,
   getDemoCategories,
   getDemoProducts,
+  applyCampaignsToProducts,
 } from './demo-store';
 
 // طبقة بيانات موحّدة: تتصل بـ Supabase إن كانت مضبوطة، وإلا تستخدم البيانات المحلية.
@@ -74,6 +75,8 @@ export async function getProducts(opts?: {
     const cat = getDemoCategories().find((c) => c.slug === opts!.categorySlug);
     if (cat) list = list.filter((p) => p.category_id === cat.id);
   }
+  // تطبيق خصومات الحملات النشطة (للعرض في المتجر فقط)
+  list = applyCampaignsToProducts(list);
   return list;
 }
 

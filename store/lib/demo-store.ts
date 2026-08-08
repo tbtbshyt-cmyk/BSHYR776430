@@ -5,7 +5,7 @@
  * تجعل بيانات المتجر تعمل في الوضع غير المتصل بـ Supabase:
  * المنتجات الجديدة/المعدّلة/المحذوفة تظهر في المتجر ولوحة التحكم معاً.
  */
-import type { Banner, Category, Product } from '@/lib/types';
+import type { Banner, Category, Product, Campaign } from '@/lib/types';
 import { mockBanners, mockCategories, mockProducts } from '@/lib/mock-data';
 
 const P = {
@@ -202,4 +202,63 @@ export function parseImportFile(text: string, fileName: string): Record<string, 
     headers.forEach((h, i) => (row[h] = (cells[i] ?? '').trim()));
     return row;
   });
+}
+
+/* ---------------- الحملات التسويقية ---------------- */
+
+const LS_CAMPAIGNS = 'abubashar-demo-campaigns';
+
+export function getCampaigns(): Campaign[] {
+  return read<Campaign[]>(LS_CAMPAIGNS, []);
+}
+
+export function saveCampaigns(list: Campaign[]) {
+  write(LS_CAMPAIGNS, list);
+}
+
+export function getActiveCampaigns(now = new Date()): Campaign[] {
+  const t = now.getTime();
+  return getCampaigns().filter(
+    (c) =>
+      c.is_active &&
+      new Date(c.starts_at).getTime() <= t &&
+      new Date(c.ends_at).getTime() >= t,
+  );
+}
+
+export function applyCampaignsToProducts(products: Product[], now = new Date()): Product[] {
+  const campaigns = getActiveCampaigns(now);
+  if (campaigns.length === 0) return products;
+  return products.map((p) => {
+    const applicable = campaigns.filter(
+      (c) => c.product_ids.length === 0 || c.product_ids.includes(p.id),
+    );
+    if (applicable.length === 0) return p;
+    let discounted = p.price;
+    for (const c of applicable) {
+      if (c.type === 'percentage') {
+        discounted = Math.min(discounted, Math.round(p.price * (1 - c.value / 100)));
+      } else if (c.type === 'fixed') {
+        discounted = Math.min(discounted, Math.max(0, p.price - c.value));
+      } else if (c.type === 'bogo') {
+        discounted = Math.min(discounted, Math.round(p.price * 0.75));
+      }
+    }
+    if (discounted >= p.price) return p;
+    return { ...p, compare_at_price: p.price, price: discounted };
+  });
+}
+
+export function trackCampaignView(campaignId: string) {
+  const list = getCampaigns().map((c) =>
+    c.id === campaignId ? { ...c, views: c.views + 1 } : c,
+  );
+  saveCampaigns(list);
+}
+
+export function trackCampaignClick(campaignId: string) {
+  const list = getCampaigns().map((c) =>
+    c.id === campaignId ? { ...c, clicks: c.clicks + 1 } : c,
+  );
+  saveCampaigns(list);
 }

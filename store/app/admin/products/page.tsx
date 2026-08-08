@@ -6,6 +6,7 @@ import type { Product } from '@/lib/types';
 import { formatYER, discountPercent } from '@/lib/utils';
 import { Loader2, AlertTriangle, Search, Plus, Pencil, Trash2, X } from 'lucide-react';
 import { BulkImport } from '@/components/admin/BulkImport';
+import { BulkImageUploader } from '@/components/admin/BulkImageUploader';
 
 const ProductForm = lazy(() =>
   import('@/components/admin/ProductForm').then((m) => ({ default: m.ProductForm })),
@@ -75,6 +76,7 @@ export default function AdminProductsPage() {
       </div>
 
       <BulkImport onDone={load} />
+      <BulkImageUploader products={products} onDone={load} />
 
       {(creating || editing) && (
         <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-ink-950/80 p-4 backdrop-blur-sm">
