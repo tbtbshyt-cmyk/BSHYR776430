@@ -13,6 +13,16 @@ export type PaymentMethod =
   | 'bank_transfer'
   | 'local_wallet';
 
+export interface AiSettings {
+  provider: 'gemini' | 'openai';
+  api_key_set: boolean;   // لا نعيد المفتاح نفسه أبداً
+  model: string;
+  features: string[];
+  whatsapp_enabled: boolean;
+  whatsapp_number: string;
+  order_template: string;
+}
+
 export interface Campaign {
   id: string;
   name: string;

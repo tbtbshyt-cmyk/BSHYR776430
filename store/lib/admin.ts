@@ -330,3 +330,24 @@ export function fetchSettings(): StoreSettings {
 export function updateSettings(s: StoreSettings) {
   saveSettings(s);
 }
+
+// الحملات التسويقية -------------------------------------------------------
+export async function createCampaign(input: any) {
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase.from('campaigns').insert(input as any);
+    if (error) throw error;
+    return;
+  }
+  const { saveCampaigns } = await import('./demo-store');
+  const list = (await import('./demo-store')).getCampaigns();
+  saveCampaigns([...list, input]);
+}
+
+export async function fetchCampaigns(): Promise<any[]> {
+  if (isSupabaseConfigured && supabase) {
+    const { data } = await supabase.from('campaigns').select('*').order('created_at', { ascending: false });
+    return (data as any[]) ?? [];
+  }
+  const { getCampaigns } = await import('./demo-store');
+  return getCampaigns();
+}

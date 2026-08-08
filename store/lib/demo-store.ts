@@ -108,6 +108,9 @@ export interface StoreSettings {
   instagram: string;
   currency: string;
   free_shipping_threshold: number;
+  whatsapp_enabled?: boolean;
+  whatsapp_number?: string;
+  order_template?: string;
 }
 
 export const DEFAULT_SETTINGS: StoreSettings = {

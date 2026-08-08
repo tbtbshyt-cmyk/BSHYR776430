@@ -10,6 +10,7 @@ import {
 import { useCart } from '@/lib/cart-store';
 import { formatYER, PAYMENT_LABEL } from '@/lib/utils';
 import { createOrderAtomic } from '@/lib/store';
+import { getSettings } from '@/lib/demo-store';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 
 type PayMethod = 'cash_on_delivery' | 'bank_transfer' | 'local_wallet' | 'deposit';
@@ -33,6 +34,8 @@ export function CheckoutForm() {
   const { lines, subtotal, clear } = useCart();
 
   const [address, setAddress] = useState('');
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
   const [note, setNote] = useState('');
   const [payment, setPayment] = useState<PayMethod>('cash_on_delivery');
 
@@ -48,6 +51,7 @@ export function CheckoutForm() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [submitting, setSubmitting] = useState(false);
+  const [wa] = useState(() => getSettings());
   const [error, setError] = useState<string | null>(null);
 
   const requiresProof = payment !== 'cash_on_delivery';
@@ -194,7 +198,18 @@ export function CheckoutForm() {
             <MapPin size={20} className="text-gold-400" /> عنوان التوصيل
           </h3>
 
-          <label className="block">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block">
+              <span className="mb-1 block text-sm font-semibold">الاسم *</span>
+              <input value={name} onChange={(e) => setName(e.target.value)} required className="input-field" />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-sm font-semibold">رقم الهاتف *</span>
+              <input value={phone} onChange={(e) => setPhone(e.target.value)} required dir="ltr" className="input-field text-right" placeholder="7xxxxxxxx" />
+            </label>
+          </div>
+
+          <label className="block mt-4">
             <span className="mb-1 block text-sm font-semibold">العنوان التفصيلي *</span>
             <textarea
               value={address}
@@ -351,6 +366,30 @@ export function CheckoutForm() {
           <button type="submit" disabled={submitting} className="btn-gold mt-5 w-full text-lg">
             {submitting ? <><Loader2 size={20} className="animate-spin" /> جاري التأكيد...</> : 'تأكيد الطلب'}
           </button>
+
+          {wa.whatsapp_enabled && (
+            <button
+              type="button"
+              disabled={submitting}
+              onClick={() => {
+                if (!address.trim()) { setError('الرجاء إدخال عنوان التوصيل'); return; }
+                const items = lines
+                  .map((l) => `• ${l.title_ar} ×${l.quantity}${l.size ? ' (' + l.size + ')' : ''} = ${l.price * l.quantity} ر.ي`)
+                  .join('%0A');
+                const total = lines.reduce((s, l) => s + l.price * l.quantity, 0);
+                const msg = (wa.order_template || '')
+                  .replace('{items}', items)
+                  .replace('{total}', String(total))
+                  .replace('{name}', name || '-')
+                  .replace('{address}', address)
+                  .replace('{phone}', phone || '-');
+                window.open(`https://wa.me/${(wa.whatsapp_number || "").replace(/\D/g, '')}?text=${msg}`, '_blank');
+              }}
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 px-6 py-3 text-lg font-bold text-white transition hover:bg-emerald-600"
+            >
+              إتمام عبر واتساب
+            </button>
+          )}
         </div>
       </aside>
     </form>
