@@ -1,13 +1,14 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   MapPin, Loader2, CheckCircle2, AlertTriangle, LocateFixed,
-  Upload, X, FileImage,
+  Upload, X, FileImage, Tag,
 } from 'lucide-react';
 import { useCart } from '@/lib/cart-store';
+import { useWallet } from '@/lib/wallet';
 import { formatYER, PAYMENT_LABEL } from '@/lib/utils';
 import { createOrderAtomic } from '@/lib/store';
 import { getSettings } from '@/lib/demo-store';
@@ -32,6 +33,14 @@ function simulateOcr(_file: File): Promise<{ reference: string; provider: string
 export function CheckoutForm() {
   const router = useRouter();
   const { lines, subtotal, clear } = useCart();
+  const { applyCoupon, removeCoupon, appliedCoupon, discountAmount, recalcDiscount, addPoints } = useWallet();
+  const [couponCode, setCouponCode] = useState('');
+  const [couponMsg, setCouponMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  const sub = subtotal();
+  const grandTotal = Math.max(0, sub - discountAmount);
+
+  useEffect(() => { recalcDiscount(sub); }, [sub, recalcDiscount]);
 
   const [address, setAddress] = useState('');
   const [name, setName] = useState('');
@@ -172,6 +181,8 @@ export function CheckoutForm() {
         }
       }
 
+      // منح نقاط ولاء على الإجمالي بعد الخصم
+      addPoints(Math.floor(grandTotal * 0.05));
       clear();
       router.push(`/orders/${result.id}?new=1`);
     } catch (err: any) {
@@ -352,9 +363,56 @@ export function CheckoutForm() {
           </div>
 
           <div className="my-4 border-t border-white/10" />
+
+          {/* كوبون الخصم */}
+          <div className="mb-4">
+            {appliedCoupon ? (
+              <div className="flex items-center justify-between rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm">
+                <span className="flex items-center gap-2 text-emerald-300">
+                  <Tag size={14} /> كود <strong>{appliedCoupon.code}</strong> (−{formatYER(discountAmount)})
+                </span>
+                <button type="button" onClick={removeCoupon} className="text-xs text-stone-400 hover:text-red-400">
+                  إزالة
+                </button>
+              </div>
+            ) : (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const res = applyCoupon(couponCode, sub);
+                  setCouponMsg({ ok: res.ok, text: res.message });
+                }}
+                className="flex gap-2"
+              >
+                <input
+                  value={couponCode}
+                  onChange={(e) => setCouponCode(e.target.value)}
+                  placeholder="كود الخصم"
+                  className="input-field flex-1"
+                  dir="ltr"
+                />
+                <button type="submit" className="btn-ghost !py-2 whitespace-nowrap">تطبيق</button>
+              </form>
+            )}
+            {couponMsg && (
+              <p className={`mt-2 text-xs ${couponMsg.ok ? 'text-emerald-400' : 'text-red-400'}`}>{couponMsg.text}</p>
+            )}
+          </div>
+
+          <div className="flex justify-between text-sm text-stone-400">
+            <span>المجموع الفرعي</span>
+            <span>{formatYER(sub)}</span>
+          </div>
+          {discountAmount > 0 && (
+            <div className="mt-2 flex justify-between text-sm text-emerald-400">
+              <span>الخصم</span>
+              <span>−{formatYER(discountAmount)}</span>
+            </div>
+          )}
+          <div className="my-3 border-t border-white/10" />
           <div className="flex justify-between text-base font-extrabold">
             <span>الإجمالي</span>
-            <span className="gold-text">{formatYER(subtotal())}</span>
+            <span className="gold-text">{formatYER(grandTotal)}</span>
           </div>
 
           {error && (

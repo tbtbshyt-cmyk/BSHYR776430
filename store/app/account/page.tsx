@@ -7,13 +7,17 @@ import { useAuth } from '@/lib/auth';
 import { getMyOrders } from '@/lib/store';
 import { formatYER, ORDER_STATUS_LABEL } from '@/lib/utils';
 import type { Order } from '@/lib/types';
-import { User, Phone, Package, LogOut, ChevronLeft, Crown, TrendingUp } from 'lucide-react';
+import { useWallet, pointsToCurrency } from '@/lib/wallet';
+import { User, Phone, Package, LogOut, ChevronLeft, Crown, TrendingUp, Gift, Flame } from 'lucide-react';
 
 export default function AccountPage() {
   const { user, logout, init } = useAuth();
   const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const { points, streak, last_checkin, dailyCheckIn, coupons } = useWallet();
+  const [checkinResult, setCheckinResult] = useState<{ earned: number; streak: number } | null>(null);
+  const today = new Date().toISOString().slice(0, 10);
 
   useEffect(() => {
     init();
@@ -65,7 +69,47 @@ export default function AccountPage() {
               <p className="text-2xl font-black text-emerald-400">{formatYER(totalSpent)}</p>
               <p className="text-xs text-stone-400">أنفقت</p>
             </div>
+            <div className="rounded-xl bg-ink-900/60 p-3 text-center">
+              <p className="text-2xl font-black text-amber-400">{points}</p>
+              <p className="text-xs text-stone-400">نقاط الولاء</p>
+            </div>
+            <div className="rounded-xl bg-ink-900/60 p-3 text-center">
+              <p className="text-2xl font-black text-emerald-400">{formatYER(pointsToCurrency(points))}</p>
+              <p className="text-xs text-stone-400">قيمة النقاط</p>
+            </div>
           </div>
+
+          {/* تسجيل الدخول اليومي */}
+          <button
+            onClick={() => setCheckinResult(dailyCheckIn())}
+            disabled={last_checkin === today}
+            className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-l from-amber-500/20 to-gold-400/10 px-4 py-3 text-sm font-bold text-amber-300 transition hover:from-amber-500/30 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <Flame size={16} />
+            {last_checkin === today ? `حصلت على مكافأة اليوم (سلسلة ${streak} 🔥)` : 'استلام مكافأة اليوم'}
+          </button>
+          {checkinResult && (
+            <p className="mt-2 text-center text-xs text-emerald-400">
+              +{checkinResult.earned} نقطة · السلسلة: {checkinResult.streak} يوم
+            </p>
+          )}
+
+          {/* الكوبونات */}
+          {coupons.length > 0 && (
+            <div className="mt-4">
+              <p className="mb-2 flex items-center gap-1 text-xs font-semibold text-stone-400">
+                <Gift size={12} /> كوبوناتك
+              </p>
+              <div className="space-y-1.5">
+                {coupons.filter((c) => c.active).map((c) => (
+                  <div key={c.code} className="flex items-center justify-between rounded-lg border border-dashed border-gold-400/40 px-3 py-2 text-xs">
+                    <span className="font-mono font-bold text-gold-300">{c.code}</span>
+                    <span className="text-stone-400">{c.type === 'percentage' ? `خصم ${c.value}%` : `خصم ${c.value} ر.ي`}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="mt-6 space-y-2">
             {user.role !== 'customer' && (

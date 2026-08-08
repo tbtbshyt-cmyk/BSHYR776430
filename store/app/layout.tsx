@@ -3,6 +3,7 @@ import { Cairo, Tajawal } from 'next/font/google';
 import './globals.css';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
+import { SmartStylist } from '@/components/SmartStylist';
 import { CartDrawer } from '@/components/CartDrawer';
 
 const cairo = Cairo({
@@ -41,6 +42,7 @@ export default function RootLayout({
         <main className="flex-1">{children}</main>
         <Footer />
         <CartDrawer />
+        <SmartStylist />
       </body>
     </html>
   );
