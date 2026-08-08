@@ -1,0 +1,88 @@
+import type { Product } from '@/lib/types';
+
+export const mockProducts: Product[] = [
+  {
+    id: 'p1', category_id: 'c1', title_ar: 'ثوب يمني سدرة فاخر',
+    description_ar: 'ثوب سدرة يمني أصيل بقماش قطني ممتاز وخياطة يدوية متقنة، مناسب للمناسبات.',
+    price: 18000, compare_at_price: 22000, stock_quantity: 25,
+    images: ['https://placehold.co/800x1000/0f0f0f/c9a24b?text=Sedra+Thobe'],
+    sizes: ['54', '56', '58', '60'], is_featured: true, is_active: true, barcode: '6291000000012',
+  },
+  {
+    id: 'p2', category_id: 'c1', title_ar: 'بشت ملكي مطرّز',
+    description_ar: 'بشت ملكي بقماش صوف فاخر وتطريز ذهبي أنيق للمناسبات الرسمية.',
+    price: 45000, compare_at_price: 52000, stock_quantity: 8,
+    images: ['https://placehold.co/800x1000/1a1a1a/c9a24b?text=Royal+Bisht'],
+    sizes: ['M', 'L', 'XL'], is_featured: true, is_active: true, barcode: '6291000000029',
+  },
+  {
+    id: 'p3', category_id: 'c1', title_ar: 'قميص قطني كلاسيك',
+    description_ar: 'قميص رجالي قطني 100% بقصّة عصرية وألوان متعددة.',
+    price: 6500, compare_at_price: 8000, stock_quantity: 40,
+    images: ['https://placehold.co/800x1000/0f0f0f/c9a24b?text=Cotton+Shirt'],
+    sizes: ['S', 'M', 'L', 'XL', 'XXL'], is_featured: false, is_active: true, barcode: '6291000000036',
+  },
+  {
+    id: 'p4', category_id: 'c1', title_ar: 'معوزة يمنية تراثية',
+    description_ar: 'معوزة تقليدية بألوان ترابية وخطوط يدوية تعكس الأصالة اليمنية.',
+    price: 12000, compare_at_price: null, stock_quantity: 15,
+    images: ['https://placehold.co/800x1000/1a1a1a/c9a24b?text=Yemeni+Mawaz'],
+    sizes: ['one-size'], is_featured: false, is_active: true, barcode: '6291000000043',
+  },
+  {
+    id: 'p5', category_id: 'c2', title_ar: 'حذاء جلد رسمي',
+    description_ar: 'حذاء رجالي من الجلد الطبيعي بنعل مريح مناسب للدوام والمناسبات.',
+    price: 14000, compare_at_price: 17000, stock_quantity: 20,
+    images: ['https://placehold.co/800x1000/0f0f0f/c9a24b?text=Leather+Shoes'],
+    sizes: ['40', '41', '42', '43', '44'], is_featured: true, is_active: true, barcode: '6291000000050',
+  },
+  {
+    id: 'p6', category_id: 'c2', title_ar: 'حذاء رياضي خفيف',
+    description_ar: 'حذاء رياضي مريح بخامات خفيفة وتهوية ممتازة للاستخدام اليومي.',
+    price: 11000, compare_at_price: 13500, stock_quantity: 30,
+    images: ['https://placehold.co/800x1000/1a1a1a/c9a24b?text=Sport+Shoes'],
+    sizes: ['40', '41', '42', '43', '44', '45'], is_featured: true, is_active: true, barcode: '6291000000067',
+  },
+  {
+    id: 'p7', category_id: 'c2', title_ar: 'صندل جلد رسمي',
+    description_ar: 'صندل رجالي من الجلد بتصميم أنيق ومتانة عالية.',
+    price: 8500, compare_at_price: 10000, stock_quantity: 18,
+    images: ['https://placehold.co/800x1000/0f0f0f/c9a24b?text=Leather+Sandal'],
+    sizes: ['40', '41', '42', '43', '44'], is_featured: false, is_active: true, barcode: '6291000000074',
+  },
+  {
+    id: 'p8', category_id: 'c2', title_ar: 'حذاء سباحة جلدي',
+    description_ar: 'حذاء سباحة مصنوع يدوياً من الجلد الطبيعي بتصميم تراثي مريح.',
+    price: 7000, compare_at_price: null, stock_quantity: 22,
+    images: ['https://placehold.co/800x1000/1a1a1a/c9a24b?text=Sabaha'],
+    sizes: ['40', '41', '42', '43', '44'], is_featured: false, is_active: true, barcode: '6291000000081',
+  },
+  {
+    id: 'p9', category_id: 'c3', title_ar: 'محفظة جلد فاخرة',
+    description_ar: 'محفظة رجالية من الجلد الطبيعي بجيوب منظمة وعملية.',
+    price: 5500, compare_at_price: 7000, stock_quantity: 28,
+    images: ['https://placehold.co/800x1000/0f0f0f/c9a24b?text=Leather+Wallet'],
+    sizes: ['one-size'], is_featured: false, is_active: true, barcode: '6291000000098',
+  },
+  {
+    id: 'p10', category_id: 'c3', title_ar: 'حزام جلد طبيعي',
+    description_ar: 'حزام رجالي من الجلد الطبيعي بإبزيم معدني أنيق.',
+    price: 4000, compare_at_price: 5500, stock_quantity: 35,
+    images: ['https://placehold.co/800x1000/1a1a1a/c9a24b?text=Leather+Belt'],
+    sizes: ['100', '110', '120'], is_featured: false, is_active: true, barcode: '6291000000104',
+  },
+  {
+    id: 'p11', category_id: 'c3', title_ar: 'ساعة يد كلاسيك',
+    description_ar: 'ساعة رجالية أنيقة بسوار جلدي ومقاومة للماء.',
+    price: 19000, compare_at_price: 24000, stock_quantity: 10,
+    images: ['https://placehold.co/800x1000/0f0f0f/c9a24b?text=Classic+Watch'],
+    sizes: ['one-size'], is_featured: true, is_active: true, barcode: '6291000000111',
+  },
+  {
+    id: 'p12', category_id: 'c3', title_ar: 'عقال وغترة فاخرة',
+    description_ar: 'طقم عقال وغترة فاخر بخامة ناعمة وتشطيب راقٍ.',
+    price: 6000, compare_at_price: 8000, stock_quantity: 24,
+    images: ['https://placehold.co/800x1000/1a1a1a/c9a24b?text=Agal+Ghutra'],
+    sizes: ['one-size'], is_featured: false, is_active: true, barcode: '6291000000128',
+  },
+];

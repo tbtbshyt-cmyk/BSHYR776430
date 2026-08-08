@@ -5,6 +5,7 @@ import { adminFetchProducts, createProduct, updateProduct, deleteProduct, fetchC
 import type { Product } from '@/lib/types';
 import { formatYER, discountPercent } from '@/lib/utils';
 import { Loader2, AlertTriangle, Search, Plus, Pencil, Trash2, X } from 'lucide-react';
+import { BulkImport } from '@/components/admin/BulkImport';
 
 const ProductForm = lazy(() =>
   import('@/components/admin/ProductForm').then((m) => ({ default: m.ProductForm })),
@@ -63,7 +64,7 @@ export default function AdminProductsPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="font-display text-2xl font-black">المنتجات والمخزون</h2>
-          <p className="text-sm text-stone-400">إضافة وتعديل وحذف المنتجات وإدارة الباركود</p>
+          <p className="text-sm text-stone-400">إضافة وتعديل وحذف المنتجات وإدارة الباركود والاستيراد بالجملة</p>
         </div>
         <button
           onClick={() => { setCreating(true); setEditing(null); }}
@@ -72,6 +73,8 @@ export default function AdminProductsPage() {
           <Plus size={18} /> منتج جديد
         </button>
       </div>
+
+      <BulkImport onDone={load} />
 
       {(creating || editing) && (
         <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-ink-950/80 p-4 backdrop-blur-sm">

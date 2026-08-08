@@ -30,6 +30,7 @@ export interface Category {
   slug: string;
   image_url: string | null;
   is_active?: boolean;
+  sort_order?: number;
 }
 
 export interface Product {

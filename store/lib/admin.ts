@@ -2,7 +2,20 @@
 
 import { supabase, isSupabaseConfigured } from './supabase';
 import type { Order, OrderStatus, Transaction, Product, Category } from './types';
-import { mockProducts, mockCategories } from './mock-data';
+import {
+  getDemoCategories,
+  getDemoProducts,
+  saveDemoProduct,
+  deleteDemoProduct,
+  saveDemoCategory,
+  deleteDemoCategory,
+  getDemoBanners,
+  saveDemoBanners,
+  getSettings,
+  saveSettings,
+  type StoreSettings,
+} from './demo-store';
+export type { StoreSettings };
 
 // محرّك إداري للوحة التحكم. في الوضع غير المتصل يقدّم محاكاة في الذاكرة
 // عبر localStorage لتبقى التجربة كاملة بدون قاعدة بيانات.
@@ -50,8 +63,8 @@ export async function fetchDashboardStats() {
     revenue_delivered: revenue,
     revenue_pending: pendingRevenue,
     pending_deposits: orders.filter((o) => !o.deposit_paid && ['pending', 'processing'].includes(o.status)).length,
-    products_total: mockProducts.length,
-    low_stock_count: mockProducts.filter((p) => p.stock_quantity < 5).length,
+    products_total: getDemoProducts().length,
+    low_stock_count: getDemoProducts().filter((p: Product) => p.stock_quantity < 5).length,
     customers_total: 128 + orders.length,
     staff_total: 3,
   };
@@ -169,7 +182,7 @@ export async function fetchProducts(): Promise<Product[]> {
     if (error) throw error;
     return data as Product[];
   }
-  return mockProducts;
+  return getDemoProducts();
 }
 
 export async function fetchCategories(): Promise<Category[]> {
@@ -178,7 +191,7 @@ export async function fetchCategories(): Promise<Category[]> {
     if (error) throw error;
     return data as Category[];
   }
-  return mockCategories;
+  return getDemoCategories();
 }
 
 // تسجيل طلب تجريبي أنشأه العميل من صفحة الإتمام (في الوضع المحلي)
@@ -193,8 +206,6 @@ export function getDemoOrders() {
 }
 
 // إدارة المنتجات (CRUD) ----------------------------------------------------
-const LS_PRODUCTS = 'abubashar-demo-products';
-
 export async function createProduct(input: Partial<Product>): Promise<Product> {
   if (isSupabaseConfigured && supabase) {
     const { data, error } = await supabase
@@ -205,7 +216,6 @@ export async function createProduct(input: Partial<Product>): Promise<Product> {
     if (error) throw error;
     return data as Product;
   }
-  const list = readDemoProducts();
   const product: Product = {
     id: 'p-' + Date.now(),
     category_id: input.category_id ?? null,
@@ -220,7 +230,7 @@ export async function createProduct(input: Partial<Product>): Promise<Product> {
     is_active: input.is_active ?? true,
     barcode: input.barcode ?? null,
   } as Product;
-  writeDemoProducts([product, ...list]);
+  saveDemoProduct(product);
   return product;
 }
 
@@ -230,12 +240,9 @@ export async function updateProduct(id: string, patch: Partial<Product>): Promis
     if (error) throw error;
     return;
   }
-  const list = readDemoProducts();
-  const idx = list.findIndex((p) => p.id === id);
-  if (idx >= 0) {
-    list[idx] = { ...list[idx], ...patch };
-    writeDemoProducts(list);
-  }
+  const all = getDemoProducts();
+  const found = all.find((p) => p.id === id);
+  if (found) saveDemoProduct({ ...found, ...patch, id });
 }
 
 export async function deleteProduct(id: string): Promise<void> {
@@ -244,7 +251,7 @@ export async function deleteProduct(id: string): Promise<void> {
     if (error) throw error;
     return;
   }
-  writeDemoProducts(readDemoProducts().filter((p) => p.id !== id));
+  deleteDemoProduct(id);
 }
 
 export async function adminFetchProducts(): Promise<Product[]> {
@@ -256,19 +263,70 @@ export async function adminFetchProducts(): Promise<Product[]> {
     if (error) throw error;
     return data as Product[];
   }
-  const local = readDemoProducts();
-  const ids = new Set(local.map((p) => p.id));
-  return [...local, ...mockProducts.filter((p) => !ids.has(p.id))];
+  return getDemoProducts();
 }
 
-function readDemoProducts(): Product[] {
-  if (typeof window === 'undefined') return [];
-  try {
-    return JSON.parse(localStorage.getItem(LS_PRODUCTS) || '[]');
-  } catch {
-    return [];
+// إدارة الأصناف -----------------------------------------------------------
+export async function createCategory(input: Partial<Category>): Promise<Category> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase.from('categories').insert(input as any).select().single();
+    if (error) throw error;
+    return data as Category;
   }
+  const cat: Category = {
+    id: 'c-' + Date.now(),
+    name_ar: input.name_ar ?? 'صنف جديد',
+    slug: input.slug ?? 'cat-' + Date.now(),
+    image_url: input.image_url ?? null,
+    is_active: input.is_active ?? true,
+    sort_order: input.sort_order ?? 0,
+  };
+  saveDemoCategory(cat);
+  return cat;
 }
-function writeDemoProducts(products: Product[]) {
-  localStorage.setItem(LS_PRODUCTS, JSON.stringify(products));
+
+export async function updateCategory(id: string, patch: Partial<Category>) {
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await (supabase as any).from('categories').update(patch).eq('id', id);
+    if (error) throw error;
+    return;
+  }
+  const all = getDemoCategories();
+  const found = all.find((c) => c.id === id);
+  if (found) saveDemoCategory({ ...found, ...patch });
+}
+
+export async function deleteCategory(id: string) {
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase.from('categories').delete().eq('id', id);
+    if (error) throw error;
+    return;
+  }
+  deleteDemoCategory(id);
+}
+
+// إدارة البانرات ----------------------------------------------------------
+export async function saveBanners(banners: any[]) {
+  if (isSupabaseConfigured && supabase) {
+    await supabase.from('banners').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    if (banners.length) await supabase.from('banners').insert(banners as any);
+    return;
+  }
+  saveDemoBanners(banners as any);
+}
+
+export async function fetchBanners(): Promise<any[]> {
+  if (isSupabaseConfigured && supabase) {
+    const { data } = await supabase.from('banners').select('*').order('sort_order');
+    return (data as any[]) ?? [];
+  }
+  return getDemoBanners();
+}
+
+// إعدادات المتجر ----------------------------------------------------------
+export function fetchSettings(): StoreSettings {
+  return getSettings();
+}
+export function updateSettings(s: StoreSettings) {
+  saveSettings(s);
 }

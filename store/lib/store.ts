@@ -2,7 +2,11 @@
 
 import type { Banner, Category, Product, Order, CreateOrderInput } from './types';
 import { supabase, isSupabaseConfigured } from './supabase';
-import { mockBanners, mockCategories, mockProducts } from './mock-data';
+import {
+  getDemoBanners,
+  getDemoCategories,
+  getDemoProducts,
+} from './demo-store';
 
 // طبقة بيانات موحّدة: تتصل بـ Supabase إن كانت مضبوطة، وإلا تستخدم البيانات المحلية.
 
@@ -16,7 +20,7 @@ export async function getBanners(): Promise<Banner[]> {
     if (error) throw error;
     return (data as Banner[]) ?? [];
   }
-  return mockBanners;
+  return getDemoBanners();
 }
 
 export async function getCategories(): Promise<Category[]> {
@@ -29,7 +33,7 @@ export async function getCategories(): Promise<Category[]> {
     if (error) throw error;
     return (data as Category[]) ?? [];
   }
-  return mockCategories;
+  return getDemoCategories();
 }
 
 export async function getProducts(opts?: {
@@ -60,14 +64,14 @@ export async function getProducts(opts?: {
     return (data as Product[]) ?? [];
   }
 
-  let list = [...mockProducts];
+  let list = getDemoProducts();
   if (opts?.featured) list = list.filter((p) => p.is_featured);
   if (opts?.query) {
     const q = opts.query.trim();
     list = list.filter((p) => p.title_ar.includes(q));
   }
   if (opts?.categorySlug) {
-    const cat = mockCategories.find((c) => c.slug === opts!.categorySlug);
+    const cat = getDemoCategories().find((c) => c.slug === opts!.categorySlug);
     if (cat) list = list.filter((p) => p.category_id === cat.id);
   }
   return list;
@@ -83,7 +87,7 @@ export async function getProduct(id: string): Promise<Product | null> {
     if (error) return null;
     return data as Product;
   }
-  return mockProducts.find((p) => p.id === id) ?? null;
+  return getDemoProducts().find((p) => p.id === id) ?? null;
 }
 
 export async function getMyOrders(): Promise<Order[]> {
@@ -154,7 +158,7 @@ export async function createOrderAtomic(
   // محاكاة محلية (للعرض بدون قاعدة بيانات)
   await new Promise((r) => setTimeout(r, 900));
   const total = input.items.reduce((sum, it) => {
-    const p = mockProducts.find((x) => x.id === it.product_id);
+    const p = getDemoProducts().find((x) => x.id === it.product_id);
     return sum + (p ? p.price * it.quantity : 0);
   }, 0);
   const orderId = 'demo-' + Math.random().toString(36).slice(2, 10);
@@ -173,7 +177,7 @@ export async function createOrderAtomic(
     note: input.note ?? null,
     created_at: new Date().toISOString(),
     items: input.items.map((it) => {
-      const p = mockProducts.find((x) => x.id === it.product_id)!;
+      const p = getDemoProducts().find((x) => x.id === it.product_id)!;
       return {
         product_id: it.product_id,
         title_ar: p.title_ar,
