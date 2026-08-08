@@ -6,19 +6,24 @@ import {
   ShoppingBag, DollarSign, Package, Users, TrendingUp,
   AlertTriangle, Clock, CreditCard,
 } from 'lucide-react';
-import { fetchDashboardStats, fetchOrders } from '@/lib/admin';
+import { fetchDashboardStats, fetchOrders, adminFetchProducts } from '@/lib/admin';
 import { formatYER, ORDER_STATUS_LABEL } from '@/lib/utils';
+import { getSalesReport, type SalesReport as SalesReportType } from '@/lib/demo-store';
+import { SalesReport as SalesReportPanel } from '@/components/admin/SalesReport';
+import type { Product } from '@/lib/types';
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState<any>(null);
   const [recent, setRecent] = useState<any[]>([]);
+  const [report, setReport] = useState<SalesReportType | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([fetchDashboardStats(), fetchOrders('all')])
-      .then(([s, o]) => {
+    Promise.all([fetchDashboardStats(), fetchOrders('all'), adminFetchProducts()])
+      .then(([s, o, products]: [any, any[], Product[]]) => {
         setStats(s);
         setRecent(o.slice(0, 6));
+        setReport(getSalesReport(o, products));
       })
       .finally(() => setLoading(false));
   }, []);
@@ -66,6 +71,8 @@ export default function AdminDashboard() {
           </span>
         </div>
       )}
+
+      {report && <SalesReportPanel report={report} />}
 
       <div className="card p-6">
         <div className="mb-4 flex items-center justify-between">

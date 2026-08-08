@@ -262,3 +262,79 @@ export function trackCampaignClick(campaignId: string) {
   );
   saveCampaigns(list);
 }
+
+/* ---------------- تقرير المبيعات ---------------- */
+
+export interface SalesReport {
+  total_revenue: number;
+  orders_count: number;
+  avg_order: number;
+  by_status: Record<string, number>;
+  last_7_days: { label: string; revenue: number; orders: number }[];
+  top_products: { id: string; title: string; qty: number; revenue: number }[];
+}
+
+export function getSalesReport(orders: Array<{ created_at: string; status: string; total_amount: number; items?: Array<{ product_id?: string; title_ar?: string; quantity: number; unit_price?: number; price?: number }> }>, products: Product[]): SalesReport {
+  const byStatus: Record<string, number> = {};
+  let total = 0;
+  let count = 0;
+  for (const o of orders) {
+    byStatus[o.status] = (byStatus[o.status] ?? 0) + 1;
+    if (o.status === 'delivered') {
+      total += Number(o.total_amount);
+      count++;
+    }
+  }
+
+  // آخر 7 أيام
+  const days: { label: string; revenue: number; orders: number; date: string }[] = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    days.push({ label: d.toLocaleDateString('ar', { weekday: 'short' }), revenue: 0, orders: 0, date: d.toISOString().slice(0, 10) });
+  }
+  const byDay = new Map(days.map((x) => [x.date, x]));
+  for (const o of orders) {
+    if (o.status !== 'delivered') continue;
+    const key = new Date(o.created_at).toISOString().slice(0, 10);
+    const day = byDay.get(key);
+    if (day) {
+      day.revenue += Number(o.total_amount);
+      day.orders += 1;
+    }
+  }
+
+  // أكثر المنتجات مبيعاً
+  const productMap = new Map(products.map((p) => [p.id, p]));
+  const agg = new Map<string, { qty: number; revenue: number }>();
+  for (const o of orders) {
+    if (o.status !== 'delivered') continue;
+    for (const it of o.items ?? []) {
+      const pid = it.product_id ?? '';
+      if (!pid) continue;
+      const price = Number(it.unit_price ?? it.price ?? 0);
+      const cur = agg.get(pid) ?? { qty: 0, revenue: 0 };
+      cur.qty += it.quantity;
+      cur.revenue += price * it.quantity;
+      agg.set(pid, cur);
+    }
+  }
+  const top = Array.from(agg.entries())
+    .map(([id, v]) => ({
+      id,
+      title: productMap.get(id)?.title_ar ?? 'منتج محذوف',
+      qty: v.qty,
+      revenue: v.revenue,
+    }))
+    .sort((a, b) => b.qty - a.qty)
+    .slice(0, 5);
+
+  return {
+    total_revenue: total,
+    orders_count: count,
+    avg_order: count ? Math.round(total / count) : 0,
+    by_status: byStatus,
+    last_7_days: days.map(({ label, revenue, orders }) => ({ label, revenue, orders })),
+    top_products: top,
+  };
+}

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { BannerCarousel } from '@/components/BannerCarousel';
+import { CampaignBanners } from '@/components/CampaignBanners';
 import { CategoryShowcase } from '@/components/CategoryShowcase';
 import { ProductGrid } from '@/components/ProductGrid';
 import { Hero } from '@/components/Hero';
@@ -37,6 +38,7 @@ export default function HomePage() {
   return (
     <>
       <BannerCarousel banners={banners} />
+      <CampaignBanners />
       <Hero />
       <CategoryShowcase categories={categories} />
 
