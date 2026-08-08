@@ -4,7 +4,7 @@ import { Tag } from 'lucide-react';
 import type { Product } from '@/lib/types';
 import { formatYER, discountPercent } from '@/lib/utils';
 
-export function ProductCard({ product }: { product: Product }) {
+export function ProductCard({ product, compact }: { product: Product; compact?: boolean }) {
   const off = discountPercent(product.price, product.compare_at_price);
   const low = product.stock_quantity > 0 && product.stock_quantity <= 5;
 
@@ -45,8 +45,8 @@ export function ProductCard({ product }: { product: Product }) {
         )}
       </div>
 
-      <div className="flex flex-1 flex-col p-4">
-        <h3 className="line-clamp-2 min-h-[2.8rem] font-display font-bold leading-7 text-stone-100 group-hover:text-gold-300">
+      <div className={`flex flex-1 flex-col ${compact ? 'p-2' : 'p-4'}`}>
+        <h3 className={`line-clamp-2 min-h-[2.8rem] font-display font-bold leading-7 text-stone-100 group-hover:text-gold-300 ${compact ? 'text-xs leading-5 min-h-0' : ''}`}>
           {product.title_ar}
         </h3>
         <div className="mt-auto flex items-end justify-between pt-4">

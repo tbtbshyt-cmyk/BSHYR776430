@@ -7,23 +7,29 @@ import { Stories } from '@/components/Stories';
 import { CategoryShowcase } from '@/components/CategoryShowcase';
 import { ProductGrid } from '@/components/ProductGrid';
 import { Hero } from '@/components/Hero';
+import { FlashSale } from '@/components/FlashSale';
 import { getBanners, getCategories, getProducts } from '@/lib/store';
+import { getActiveCampaigns } from '@/lib/demo-store';
 import Link from 'next/link';
 import { ArrowLeft, Loader2 } from 'lucide-react';
-import type { Banner, Category, Product } from '@/lib/types';
+import type { Banner, Category, Product, Campaign } from '@/lib/types';
 
 export default function HomePage() {
   const [banners, setBanners] = useState<Banner[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [featured, setFeatured] = useState<Product[]>([]);
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([getBanners(), getCategories(), getProducts({ featured: true })])
-      .then(([b, c, f]) => {
+    Promise.all([getBanners(), getCategories(), getProducts({ featured: true }), getProducts()])
+      .then(([b, c, f, all]) => {
         setBanners(b);
         setCategories(c);
         setFeatured(f);
+        setAllProducts(all);
+        setCampaigns(getActiveCampaigns());
       })
       .finally(() => setLoading(false));
   }, []);
@@ -42,6 +48,7 @@ export default function HomePage() {
       <CampaignBanners />
       <Stories />
       <Hero />
+      <FlashSale products={allProducts} campaigns={campaigns} />
       <CategoryShowcase categories={categories} />
 
       <section className="container-x py-14">

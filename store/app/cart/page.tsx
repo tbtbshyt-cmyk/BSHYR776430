@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useCart } from '@/lib/cart-store';
 import { formatYER } from '@/lib/utils';
 import { CartItemsList } from '@/components/CartDrawer';
+import { CartUpsell } from '@/components/CartUpsell';
 import { ArrowLeft, ShoppingBag } from 'lucide-react';
 
 export default function CartPage() {
@@ -22,7 +23,8 @@ export default function CartPage() {
 
         {count > 0 && (
           <aside className="lg:col-span-1">
-            <div className="card sticky top-24 p-6">
+            <CartUpsell />
+            <div className="card sticky top-24 p-6 mt-6">
               <h3 className="font-display text-lg font-extrabold">ملخص الطلب</h3>
               <div className="mt-4 space-y-3 text-sm">
                 <div className="flex justify-between text-stone-300">
