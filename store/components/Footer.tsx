@@ -65,6 +65,7 @@ export function Footer() {
           <h4 className="mb-4 font-bold text-gold-300">خدمة العملاء</h4>
           <ul className="space-y-2 text-sm text-stone-400">
             <li><Link href="/otp" className="hover:text-gold-300">حسابي</Link></li>
+            <li><Link href="/rewards" className="hover:text-gold-300">المكافآت والهدايا</Link></li>
             <li><Link href="/checkout" className="hover:text-gold-300">إتمام الطلب</Link></li>
             <li><Link href="/returns" className="hover:text-gold-300">الإرجاع والاستبدال</Link></li>
             <li><Link href="/shipping" className="hover:text-gold-300">الشحن والتوصيل</Link></li>

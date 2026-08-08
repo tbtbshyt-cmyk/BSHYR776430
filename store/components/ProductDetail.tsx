@@ -5,10 +5,11 @@ import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Check, Truck, ShieldCheck, RefreshCw, ShoppingBag, ChevronLeft, ChevronRight, Store } from 'lucide-react';
+import { Check, Truck, ShieldCheck, RefreshCw, ShoppingBag, ChevronLeft, ChevronRight, Store, Ruler } from 'lucide-react';
 import type { Product } from '@/lib/types';
 import { formatYER, discountPercent } from '@/lib/utils';
 import { useCart } from '@/lib/cart-store';
+import { SizeCalculator } from './SizeCalculator';
 
 const SizeGuide = dynamic(
   () => import('./SizeGuide').then((m) => m.SizeGuide),
@@ -22,6 +23,7 @@ export function ProductDetail({ product }: { product: Product }) {
   );
   const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(false);
+  const [showCalc, setShowCalc] = useState(false);
   const add = useCart((s) => s.add);
   const router = useRouter();
 
@@ -153,6 +155,13 @@ export function ProductDetail({ product }: { product: Product }) {
               selected={size}
               onSelect={setSize}
             />
+            <button
+              type="button"
+              onClick={() => setShowCalc(true)}
+              className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-gold-300 hover:underline"
+            >
+              <Ruler size={15} /> لست متأكداً من مقاسك؟ احسب مقاسك
+            </button>
           </div>
 
           {/* الكمية + أزرار */}
@@ -216,6 +225,13 @@ export function ProductDetail({ product }: { product: Product }) {
           </div>
         </div>
       </div>
+      {showCalc && (
+        <SizeCalculator
+          sizes={product.sizes}
+          isShoes={(product.category_id ?? '').startsWith('c4')}
+          onClose={() => setShowCalc(false)}
+        />
+      )}
     </div>
   );
 }
