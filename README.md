@@ -53,6 +53,7 @@ npm run dev
 3. abubashar_v2_banners_barcode_proof.sql
 4. abubashar_v3_security_hardening.sql
 5. abubashar_v4_role_metadata_sync.sql
-6. abubashar_v5_scaling.sql   ← فهارس الأداء، عرض ملخص الطلبات، سجل الحالات
-7. abubashar_seed.sql
+6. abubashar_v5_scaling.sql          ← فهارس الأداء، عرض ملخص الطلبات، سجل الحالات
+7. abubashar_v6_storage_policies.sql ← حاويات الصور وسياسات التخزين
+8. abubashar_seed.sql
 ```
