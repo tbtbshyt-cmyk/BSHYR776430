@@ -4,6 +4,7 @@ import './globals.css';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { SmartStylist } from '@/components/SmartStylist';
+import { PwaInstaller } from '@/components/PwaInstaller';
 import { CartDrawer } from '@/components/CartDrawer';
 
 const cairo = Cairo({
@@ -21,9 +22,21 @@ const tajawal = Tajawal({
 });
 
 export const metadata: Metadata = {
-  title: 'أبو بشار جوال | جوالات وإكسسوارات - شبوة عتق',
-  description: 'أبو بشار جوال - وكالة الجوالات والإكسسوارات في شبوة عتق. خلف شبوة مول الجديد، خالف سوق الجوالات. جوالات وشواحن وسماعات وإكسسوارات بأسعار منافسة.',
-  keywords: ['جوالات', 'إكسسوارات', 'شبوة', 'عتق', 'أبو بشار جوال', 'آيفون', 'سامسونج', 'شاومي'],
+  title: 'محلات أبو بشار للملابس والأحذية | عتق - شبوة',
+  description: 'محلات أبو بشار للملابس والأحذية في عتق، شبوة. ملابس رجالية ونسائية وأطفال، أحذية وشرابات وكماليات بأسعار منافسة.',
+  keywords: ['ملابس', 'أحذية', 'شبوة', 'عتق', 'أبو بشار', 'معاوز', 'دروع'],
+  manifest: '/manifest.webmanifest',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'أبو بشار',
+  },
+};
+
+export const viewport = {
+  themeColor: '#0a0a0a',
+  width: 'device-width',
+  initialScale: 1,
 };
 
 export default function RootLayout({
@@ -43,6 +56,7 @@ export default function RootLayout({
         <Footer />
         <CartDrawer />
         <SmartStylist />
+        <PwaInstaller />
       </body>
     </html>
   );
