@@ -93,6 +93,21 @@ export default function AdminCategoriesPage() {
               </div>
             </label>
             <label className="block">
+              <span className="mb-1 block text-sm font-semibold">القسم الأب</span>
+              <select
+                value={editing.parent_id ?? ''}
+                onChange={(e) => setEditing({ ...editing, parent_id: e.target.value || null })}
+                className="input-field"
+              >
+                <option value="">قسم رئيسي</option>
+                {cats
+                  .filter((c) => !c.parent_id && c.id !== editing.id)
+                  .map((c) => (
+                    <option key={c.id} value={c.id}>{c.name_ar}</option>
+                  ))}
+              </select>
+            </label>
+            <label className="block">
               <span className="mb-1 block text-sm font-semibold">الترتيب</span>
               <input type="number" value={editing.sort_order ?? 0} onChange={(e) => setEditing({ ...editing, sort_order: Number(e.target.value) })} className="input-field" />
             </label>

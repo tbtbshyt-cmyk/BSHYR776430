@@ -72,8 +72,12 @@ export async function getProducts(opts?: {
     list = list.filter((p) => p.title_ar.includes(q));
   }
   if (opts?.categorySlug) {
-    const cat = getDemoCategories().find((c) => c.slug === opts!.categorySlug);
-    if (cat) list = list.filter((p) => p.category_id === cat.id);
+    const allCats = getDemoCategories();
+    const cat = allCats.find((c) => c.slug === opts!.categorySlug);
+    if (cat) {
+      const allowed = new Set([cat.id, ...allCats.filter((c) => c.parent_id === cat.id).map((c) => c.id)]);
+      list = list.filter((p) => allowed.has(p.category_id ?? ''));
+    }
   }
   // تطبيق خصومات الحملات النشطة (للعرض في المتجر فقط)
   list = applyCampaignsToProducts(list);

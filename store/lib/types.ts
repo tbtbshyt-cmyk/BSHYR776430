@@ -58,6 +58,7 @@ export interface Category {
   image_url: string | null;
   is_active?: boolean;
   sort_order?: number;
+  parent_id?: string | null;
 }
 
 export interface Product {

@@ -4,6 +4,7 @@ import type { Category } from '@/lib/types';
 import { ArrowLeft } from 'lucide-react';
 
 export function CategoryShowcase({ categories }: { categories: Category[] }) {
+  const topLevel = categories.filter((c) => !c.parent_id);
   return (
     <section className="container-x py-14">
       <div className="mb-8 text-center">
@@ -13,7 +14,7 @@ export function CategoryShowcase({ categories }: { categories: Category[] }) {
       </div>
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
-        {categories.map((cat) => (
+        {topLevel.map((cat) => (
           <Link
             key={cat.id}
             href={`/products?slug=${cat.slug}`}

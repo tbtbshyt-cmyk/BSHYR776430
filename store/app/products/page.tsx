@@ -25,6 +25,7 @@ function ProductsContent({ slug, q }: { slug?: string; q?: string }) {
 
   const activeCat = categories.find((c) => c.slug === slug);
   const title = q ? `نتائج البحث: ${q}` : activeCat ? activeCat.name_ar : 'جميع المنتجات';
+  const topLevel = categories.filter((c) => !c.parent_id);
 
   return (
     <div className="container-x py-10">
@@ -54,7 +55,7 @@ function ProductsContent({ slug, q }: { slug?: string; q?: string }) {
         >
           الكل
         </Link>
-        {categories.map((c) => (
+        {topLevel.map((c) => (
           <Link
             key={c.id}
             href={`/products?slug=${c.slug}`}
