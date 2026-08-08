@@ -9,6 +9,7 @@ import { formatYER, ORDER_STATUS_LABEL } from '@/lib/utils';
 import type { Order } from '@/lib/types';
 import { useWallet, pointsToCurrency } from '@/lib/wallet';
 import { User, Phone, Package, LogOut, ChevronLeft, Crown, TrendingUp, Gift, Flame } from 'lucide-react';
+import { ShareEarn } from '@/components/ShareEarn';
 
 export default function AccountPage() {
   const { user, logout, init } = useAuth();
@@ -110,6 +111,10 @@ export default function AccountPage() {
               </div>
             </div>
           )}
+
+          <div className="mt-6">
+            <ShareEarn />
+          </div>
 
           <div className="mt-6 space-y-2">
             {user.role !== 'customer' && (
