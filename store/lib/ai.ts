@@ -74,41 +74,23 @@ function fileToDataUrl(file: File): Promise<string> {
   });
 }
 
-async function callGemini(cfg: AiConfig, prompt: string, imageDataUrl?: string): Promise<string> {
-  const contents: any = { contents: [{ role: 'user', parts: [{ text: prompt }] }] };
-  if (imageDataUrl) {
-    const match = imageDataUrl.match(/^data:(.+);base64,(.+)$/);
-    if (match) {
-      contents.contents[0].parts.push({ inline_data: { mime_type: match[1], data: match[2] } });
-    }
-  }
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${cfg.model}:generateContent?key=${cfg.apiKey}`,
-    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(contents) },
-  );
-  if (!res.ok) throw new Error(`Gemini error ${res.status}`);
-  const data = await res.json();
-  return data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
-}
-
-async function callOpenAI(cfg: AiConfig, prompt: string, imageDataUrl?: string): Promise<string> {
-  const content: any[] = [{ type: 'text', text: prompt }];
-  if (imageDataUrl) content.push({ type: 'image_url', image_url: { url: imageDataUrl } });
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+async function callAi(cfg: AiConfig, prompt: string, imageDataUrl?: string): Promise<string> {
+  // نمرّر الطلب عبر مسار الخادم لإبقاء المفتاح محمياً وتجنّب قيود CSP.
+  const res = await fetch('/api/ai', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${cfg.apiKey}`,
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      model: cfg.model || 'gpt-4o-mini',
-      messages: [{ role: 'user', content }],
-      temperature: 0.2,
+      provider: cfg.provider,
+      model: cfg.model,
+      prompt,
+      image: imageDataUrl,
+      // يُستخدم فقط في وضع العرض/التطوير؛ في الإنتاج يُقرأ المفتاح من الخادم.
+      apiKey: cfg.apiKey,
     }),
   });
-  if (!res.ok) throw new Error(`OpenAI error ${res.status}`);
   const data = await res.json();
-  return data?.choices?.[0]?.message?.content ?? '';
+  if (!res.ok) throw new Error(data?.error ?? `AI error ${res.status}`);
+  return data?.text ?? '';
 }
 
 function extractJson(text: string): any {
@@ -140,9 +122,7 @@ export async function extractProductFromImage(
 }
 لا تضف أي شرح خارج JSON.`;
 
-  const text = cfg.provider === 'openai'
-    ? await callOpenAI(cfg, prompt, dataUrl)
-    : await callGemini(cfg, prompt, dataUrl);
+  const text = await callAi(cfg, prompt, dataUrl);
   const obj = extractJson(text);
   return {
     title_ar: obj.title_ar ?? 'منتج جديد',
@@ -166,9 +146,7 @@ export async function runCommand(
 {"type":"create_campaign","campaign":{"name":"...","type":"percentage|fixed|bogo","value":رقم,"product_ids":[],"starts_at":"ISO","ends_at":"ISO","is_active":true},"message":"ملخص"}
 وإلا أخرج: {"type":"answer","message":"الإجابة"}.
 طلب المستخدم: ${instruction}`;
-  const text = cfg.provider === 'openai'
-    ? await callOpenAI(cfg, prompt)
-    : await callGemini(cfg, prompt);
+  const text = await callAi(cfg, prompt);
   try {
     return extractJson(text) as AiAction;
   } catch {
