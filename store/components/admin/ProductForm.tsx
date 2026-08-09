@@ -24,6 +24,9 @@ export function ProductForm({
   const [sizes, setSizes] = useState((initial?.sizes ?? ['one-size']).join(','));
   const [images, setImages] = useState<string[]>(initial?.images ?? []);
   const [barcode, setBarcode] = useState(initial?.barcode ?? '');
+  const [sku, setSku] = useState(initial?.sku ?? '');
+  const [cost, setCost] = useState(initial?.cost_price?.toString() ?? '');
+  const [color, setColor] = useState(initial?.color ?? '');
   const [featured, setFeatured] = useState(initial?.is_featured ?? false);
   const [active, setActive] = useState(initial?.is_active ?? true);
   const [saving, setSaving] = useState(false);
@@ -42,6 +45,9 @@ export function ProductForm({
         sizes: sizes.split(',').map((s) => s.trim()).filter(Boolean),
         images,
         barcode: barcode.trim() || null,
+        sku: sku.trim() || null,
+        cost_price: cost ? Number(cost) : undefined,
+        color: color.trim() || null,
         is_featured: featured,
         is_active: active,
       });
@@ -88,6 +94,18 @@ export function ProductForm({
         <label className="block">
           <span className="mb-1 block text-sm font-semibold">الباركود</span>
           <input value={barcode} onChange={(e) => setBarcode(e.target.value)} placeholder="EAN-13 / UPC" dir="ltr" className="input-field text-right" />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-sm font-semibold">SKU</span>
+          <input value={sku} onChange={(e) => setSku(e.target.value)} placeholder="رمز المنتج" dir="ltr" className="input-field" />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-sm font-semibold">سعر التكلفة (جملة)</span>
+          <input type="number" value={cost} onChange={(e) => setCost(e.target.value)} className="input-field" />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-sm font-semibold">اللون</span>
+          <input value={color} onChange={(e) => setColor(e.target.value)} className="input-field" />
         </label>
       </div>
 

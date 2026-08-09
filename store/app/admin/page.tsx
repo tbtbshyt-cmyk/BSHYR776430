@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   ShoppingBag, DollarSign, Package, Users, TrendingUp,
-  AlertTriangle, Clock, CreditCard,
+  AlertTriangle, Clock,
 } from 'lucide-react';
 import { fetchDashboardStats, fetchOrders, adminFetchProducts } from '@/lib/admin';
 import { formatYER, ORDER_STATUS_LABEL } from '@/lib/utils';
@@ -16,6 +16,7 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState<any>(null);
   const [recent, setRecent] = useState<any[]>([]);
   const [report, setReport] = useState<SalesReportType | null>(null);
+  const [profit, setProfit] = useState<{ gross: number; net: number; outOfStock: number }>({ gross: 0, net: 0, outOfStock: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -24,6 +25,25 @@ export default function AdminDashboard() {
         setStats(s);
         setRecent(o.slice(0, 6));
         setReport(getSalesReport(o, products));
+
+        // حساب الربح التقريبي من الطلبات المكتملة باستخدام cost_price
+        let gross = 0;
+        let cost = 0;
+        for (const order of o.filter((x) => x.status === 'delivered')) {
+          const amount = Number(order.total_amount ?? 0);
+          gross += amount;
+          const itemsCost = (order.items ?? []).reduce((sum: number, it: any) => {
+            const prod = products.find((p) => p.id === it.product_id);
+            const unitCost = prod?.cost_price ?? (prod?.price ?? 0) * 0.6;
+            return sum + unitCost * (it.quantity ?? 1);
+          }, 0);
+          cost += itemsCost;
+        }
+        setProfit({
+          gross,
+          net: gross - cost,
+          outOfStock: products.filter((p) => p.stock_quantity <= 0).length,
+        });
       })
       .finally(() => setLoading(false));
   }, []);
@@ -35,10 +55,10 @@ export default function AdminDashboard() {
   const cards = [
     { label: 'إجمالي الطلبات', value: stats?.orders_total ?? 0, icon: ShoppingBag, color: 'text-blue-300' },
     { label: 'إيرادات مكتملة', value: formatYER(stats?.revenue_delivered ?? 0), icon: DollarSign, color: 'text-emerald-300' },
-    { label: 'إيرادات معلّقة', value: formatYER(stats?.revenue_pending ?? 0), icon: TrendingUp, color: 'text-gold-300' },
+    { label: 'صافي الربح التقديري', value: formatYER(profit.net), icon: TrendingUp, color: 'text-gold-300' },
     { label: 'العملاء', value: stats?.customers_total ?? 0, icon: Users, color: 'text-purple-300' },
     { label: 'المنتجات', value: stats?.products_total ?? 0, icon: Package, color: 'text-cyan-300' },
-    { label: 'عربونات معلّقة', value: stats?.pending_deposits ?? 0, icon: CreditCard, color: 'text-amber-300' },
+    { label: 'منتجات نافدة', value: profit.outOfStock, icon: AlertTriangle, color: 'text-red-300' },
   ];
 
   return (

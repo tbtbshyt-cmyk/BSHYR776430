@@ -8,6 +8,7 @@ import { CategoryShowcase } from '@/components/CategoryShowcase';
 import { ProductGrid } from '@/components/ProductGrid';
 import { Hero } from '@/components/Hero';
 import { FlashSale } from '@/components/FlashSale';
+import { ProductBundles } from '@/components/ProductBundles';
 import { getBanners, getCategories, getProducts } from '@/lib/store';
 import { getActiveCampaigns } from '@/lib/demo-store';
 import Link from 'next/link';
@@ -49,6 +50,7 @@ export default function HomePage() {
       <Stories />
       <Hero />
       <FlashSale products={allProducts} campaigns={campaigns} />
+      <ProductBundles />
       <CategoryShowcase categories={categories} />
 
       <section className="container-x py-14">

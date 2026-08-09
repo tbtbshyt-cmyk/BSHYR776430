@@ -9,6 +9,8 @@ import {
 } from 'lucide-react';
 import { useCart } from '@/lib/cart-store';
 import { useWallet } from '@/lib/wallet';
+import { getDemoCategories, getDemoProducts } from '@/lib/demo-store';
+import { calcFamilyDiscount } from '@/lib/family-discount';
 import { formatYER, PAYMENT_LABEL } from '@/lib/utils';
 import { createOrderAtomic } from '@/lib/store';
 import { getSettings } from '@/lib/demo-store';
@@ -38,7 +40,9 @@ export function CheckoutForm() {
   const [couponMsg, setCouponMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const sub = subtotal();
-  const grandTotal = Math.max(0, sub - discountAmount);
+  const family = calcFamilyDiscount(lines, getDemoProducts(), getDemoCategories());
+  const familyDiscount = family.applies ? Math.round(sub * (family.discount / 100)) : 0;
+  const grandTotal = Math.max(0, sub - discountAmount - familyDiscount);
 
   useEffect(() => { recalcDiscount(sub); }, [sub, recalcDiscount]);
 
@@ -407,6 +411,11 @@ export function CheckoutForm() {
             <div className="mt-2 flex justify-between text-sm text-emerald-400">
               <span>الخصم</span>
               <span>−{formatYER(discountAmount)}</span>
+            </div>
+          )}
+          {family.applies && (
+            <div className="mt-2 rounded-lg bg-gold-400/10 p-2 text-xs text-gold-300">
+              🎁 خصم عائلي {family.discount}% + توصيل مجاني (مشتريات من {family.sections.length} أقسام)
             </div>
           )}
           <div className="my-3 border-t border-white/10" />

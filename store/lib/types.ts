@@ -74,6 +74,10 @@ export interface Product {
   is_featured: boolean;
   is_active?: boolean;
   barcode?: string | null;
+  cost_price?: number;
+  sku?: string | null;
+  color?: string | null;
+  video_url?: string | null;
   category?: Category;
 }
 
