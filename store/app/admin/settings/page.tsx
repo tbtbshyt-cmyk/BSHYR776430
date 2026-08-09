@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { fetchSettings, updateSettings, type StoreSettings } from '@/lib/admin';
-import { Save, Loader2, Store as StoreIcon } from 'lucide-react';
+import { Save, Loader2, Store as StoreIcon, KeyRound } from 'lucide-react';
 
 export default function AdminSettingsPage() {
   const [s, setS] = useState<StoreSettings | null>(null);
@@ -62,6 +62,16 @@ export default function AdminSettingsPage() {
           <Field label="العملة" value={s.currency} onChange={(v) => set('currency', v)} dir="ltr" />
         </div>
       </div>
+
+      <div className="card p-6">
+        <h3 className="mb-1 flex items-center gap-2 font-bold">
+          <KeyRound size={18} className="text-gold-400" /> مفاتيح التكامل (Integrations)
+        </h3>
+        <p className="mb-4 text-xs text-stone-400">
+          تُحفظ محلياً في وضع الديمو. في الإنتاج تُخزَّن مشفّرة في قاعدة البيانات.
+        </p>
+        <IntegrationsForm />
+      </div>
     </div>
   );
 }
@@ -86,3 +96,53 @@ function Field({
     </label>
   );
 }
+
+function IntegrationsForm() {
+  const [aiKey, setAiKey] = useState('');
+  const [vapidPub, setVapidPub] = useState('');
+  const [vapidPriv, setVapidPriv] = useState('');
+  const [paymentKey, setPaymentKey] = useState('');
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    setAiKey(localStorage.getItem('int_ai_key') ?? '');
+    setVapidPub(localStorage.getItem('int_vapid_pub') ?? '');
+    setVapidPriv(localStorage.getItem('int_vapid_priv') ?? '');
+    setPaymentKey(localStorage.getItem('int_payment_key') ?? '');
+  }, []);
+
+  const save = () => {
+    localStorage.setItem('int_ai_key', aiKey);
+    localStorage.setItem('int_vapid_pub', vapidPub);
+    localStorage.setItem('int_vapid_priv', vapidPriv);
+    localStorage.setItem('int_payment_key', paymentKey);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
+
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      <label className="block">
+        <span className="mb-1 block text-sm font-semibold">مفتاح الذكاء الاصطناعي (Gemini/OpenAI)</span>
+        <input type="password" value={aiKey} onChange={(e) => setAiKey(e.target.value)} className="input-field" dir="ltr" placeholder="AIza... or sk-..." />
+      </label>
+      <label className="block">
+        <span className="mb-1 block text-sm font-semibold">مفتاح VAPID العام</span>
+        <input type="password" value={vapidPub} onChange={(e) => setVapidPub(e.target.value)} className="input-field" dir="ltr" />
+      </label>
+      <label className="block">
+        <span className="mb-1 block text-sm font-semibold">مفتاح VAPID الخاص</span>
+        <input type="password" value={vapidPriv} onChange={(e) => setVapidPriv(e.target.value)} className="input-field" dir="ltr" />
+      </label>
+      <label className="block">
+        <span className="mb-1 block text-sm font-semibold">مفتاح بوابة الدفع</span>
+        <input type="password" value={paymentKey} onChange={(e) => setPaymentKey(e.target.value)} className="input-field" dir="ltr" />
+      </label>
+      <div className="md:col-span-2 flex items-center gap-3">
+        <button onClick={save} className="btn-gold !py-2"><Save size={16} /> حفظ المفاتيح</button>
+        {saved && <span className="text-sm text-emerald-400">تم الحفظ ✓</span>}
+      </div>
+    </div>
+  );
+}
+
