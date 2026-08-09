@@ -54,6 +54,12 @@ export function PwaInstaller() {
         body: 'سنعلمك بأحدث العروض والخصومات!',
         icon: '/icon.svg',
       });
+      try {
+        const { subscribePush, getPublicKey } = await import('@/lib/push');
+        if (getPublicKey()) await subscribePush();
+      } catch {
+        /* تجاهل في وضع الديمو */
+      }
     }
   };
 
