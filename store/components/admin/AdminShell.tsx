@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import {
   LayoutDashboard, ShoppingBag, Users, Package, CreditCard,
-  LogOut, Crown, Menu, X, Truck, Image as ImageIcon, Tags, Settings, Megaphone, Sparkles, Calculator,
+  LogOut, Crown, Menu, X, Truck, Image as ImageIcon, Tags, Settings, Megaphone, Sparkles, Calculator, Bell,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { RequireAuth } from '@/components/RequireAuth';
@@ -16,6 +16,7 @@ const NAV = [
   { href: '/admin/pos', label: 'نقطة البيع POS', icon: Calculator, roles: ['admin', 'manager'] },
   { href: '/admin/orders', label: 'الطلبات', icon: ShoppingBag, roles: ['admin', 'manager'] },
   { href: '/admin/payments', label: 'الدفعات', icon: CreditCard, roles: ['admin', 'manager'] },
+  { href: '/admin/push', label: 'مركز الإشعارات', icon: Bell, roles: ['admin', 'manager'] },
   { href: '/admin/products', label: 'المنتجات', icon: Package, roles: ['admin', 'manager'] },
   { href: '/admin/ai', label: 'الذكاء الاصطناعي', icon: Sparkles, roles: ['admin', 'manager'] },
   { href: '/admin/campaigns', label: 'الحملات الإعلانية', icon: Megaphone, roles: ['admin', 'manager'] },

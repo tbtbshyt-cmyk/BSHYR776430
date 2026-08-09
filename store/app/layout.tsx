@@ -5,6 +5,7 @@ import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { SmartStylist } from '@/components/SmartStylist';
 import { PwaInstaller } from '@/components/PwaInstaller';
+import { SocialProof } from '@/components/SocialProof';
 import { CartDrawer } from '@/components/CartDrawer';
 
 const cairo = Cairo({
@@ -57,6 +58,7 @@ export default function RootLayout({
         <CartDrawer />
         <SmartStylist />
         <PwaInstaller />
+        <SocialProof />
       </body>
     </html>
   );
