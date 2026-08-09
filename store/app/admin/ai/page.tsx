@@ -11,6 +11,7 @@ import {
   type AiConfig, type ExtractedProduct,
 } from '@/lib/ai';
 import { fetchCategories, createProduct, createCampaign } from '@/lib/admin';
+import { BulkExtract } from '@/components/admin/BulkExtract';
 import type { Category, Campaign } from '@/lib/types';
 
 type Msg = {
@@ -23,7 +24,7 @@ type Msg = {
 };
 
 export default function AiAdminPage() {
-  const [tab, setTab] = useState<'chat' | 'settings'>('chat');
+  const [tab, setTab] = useState<'chat' | 'extract' | 'settings'>('chat');
   const [cfg, setCfg] = useState<AiConfig>({ provider: 'gemini', apiKey: '', model: 'gemini-1.5-flash' });
   const [categories, setCategories] = useState<Category[]>([]);
   const [messages, setMessages] = useState<Msg[]>([]);
@@ -140,10 +141,13 @@ export default function AiAdminPage() {
           <p className="text-sm text-stone-400">مساعد ذكي لاستخراج المنتجات من الصور وإنشاء الحملات وأتمتة الواتساب</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => setTab('chat')} className={tab === 'chat' ? 'btn-gold !py-2 text-sm' : 'btn-ghost !py-2 text-sm'}>
+          <button type="button" onClick={() => setTab('chat')} className={tab === 'chat' ? 'btn-gold !py-2 text-sm' : 'btn-ghost !py-2 text-sm'}>
             <MessageSquare size={16} /> المحادثة
           </button>
-          <button onClick={() => setTab('settings')} className={tab === 'settings' ? 'btn-gold !py-2 text-sm' : 'btn-ghost !py-2 text-sm'}>
+          <button type="button" onClick={() => setTab('extract')} className={tab === 'extract' ? 'btn-gold !py-2 text-sm' : 'btn-ghost !py-2 text-sm'}>
+            <ImageIcon size={16} /> استخراج جماعي
+          </button>
+          <button type="button" onClick={() => setTab('settings')} className={tab === 'settings' ? 'btn-gold !py-2 text-sm' : 'btn-ghost !py-2 text-sm'}>
             <Settings size={16} /> الإعدادات
           </button>
         </div>
@@ -155,7 +159,9 @@ export default function AiAdminPage() {
         </div>
       )}
 
-      {tab === 'chat' ? (
+      {tab === 'extract' ? (
+        <BulkExtract categories={categories} cfg={cfg} />
+      ) : tab === 'chat' ? (
         <div className="card flex h-[70vh] flex-col overflow-hidden p-0">
           <div className="flex items-center gap-2 border-b border-white/5 p-4">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gold-400/15 text-gold-300"><Bot size={18} /></span>
