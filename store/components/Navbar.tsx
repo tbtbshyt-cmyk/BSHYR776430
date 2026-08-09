@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ShoppingBag, Search, Menu, X, Mic, MicOff, User } from 'lucide-react';
+import { ShoppingBag, Search, Menu, X, Mic, MicOff, User, Camera } from 'lucide-react';
 import { useCart } from '@/lib/cart-store';
 import { useAuth } from '@/lib/auth';
 import { useEffect, useRef, useState } from 'react';
@@ -151,6 +151,14 @@ export function Navbar() {
             >
               {listening ? <MicOff size={16} /> : <Mic size={16} />}
             </button>
+            <Link
+              href="/search/visual"
+              className="absolute left-9 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-stone-400 transition hover:bg-white/5 hover:text-gold-300"
+              aria-label="بحث بالصورة"
+              title="بحث بالصورة"
+            >
+              <Camera size={16} />
+            </Link>
           </div>
         </form>
 

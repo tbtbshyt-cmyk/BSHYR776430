@@ -9,6 +9,7 @@ import { ProductGrid } from '@/components/ProductGrid';
 import { Hero } from '@/components/Hero';
 import { FlashSale } from '@/components/FlashSale';
 import { ProductBundles } from '@/components/ProductBundles';
+import { DealOfTheDay } from '@/components/DealOfTheDay';
 import { getBanners, getCategories, getProducts } from '@/lib/store';
 import { getActiveCampaigns } from '@/lib/demo-store';
 import Link from 'next/link';
@@ -50,6 +51,7 @@ export default function HomePage() {
       <Stories />
       <Hero />
       <FlashSale products={allProducts} campaigns={campaigns} />
+      <DealOfTheDay products={allProducts} campaigns={campaigns} />
       <ProductBundles />
       <CategoryShowcase categories={categories} />
 
