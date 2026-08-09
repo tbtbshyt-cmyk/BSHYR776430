@@ -1,18 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
-// حجم أقصى 50 ميجابايت لمسار الرفع (متعدد الصور)
+// حد أقصى 50 ميجابايت لمسار الرفع (متعدد الصور)
 export const maxDuration = 60;
 
+function corsHeaders() {
+  return {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  };
+}
+
+export async function OPTIONS() {
+  return NextResponse.json({}, { headers: corsHeaders() });
+}
+
 /**
- * مسار خادم لرفع الصور.
- * يستقبل multipart/form-data ويحتوي على:
- *  - files: صورة أو أكثر
- *  - productId? : معرّف المنتج (للربط)
- *  - bucket? : اسم الحاوية (افتراضياً product-images)
+ * مسار خادم حقيقي لرفع الصور.
+ *  - يستقبل multipart/form-data
+ *  - يضغط الصور ويحوّلها إلى WebP (عبر sharp)
+ *  - يرفعها إلى Supabase Storage عند توفر مفاتيح الخادم
+ *  - في وضع الديمو يعيد data URLs
  *
- * في وضع Supabase، يُرفع إلى Storage عبر SUPABASE_URL/SERVICE_ROLE_KEY.
- * في الوضع المحلي، يعيد روابط data URLs للمعاينة فقط.
+ * الحقول:
+ *  files: صورة أو أكثر (مطلوب)
+ *  productId?: معرّف المنتج للربط
+ *  bucket?: اسم الحاوية (افتراضي product-images)
  */
 export async function POST(req: NextRequest) {
   try {
@@ -22,14 +36,14 @@ export async function POST(req: NextRequest) {
     const bucket = String(form.get('bucket') ?? 'product-images');
 
     if (files.length === 0) {
-      return NextResponse.json({ error: 'لم تُرفع أي ملفات' }, { status: 400 });
+      return NextResponse.json({ error: 'لم تُرفع أي ملفات' }, { status: 400, headers: corsHeaders() });
     }
 
     const totalSize = files.reduce((s, f) => s + f.size, 0);
     if (totalSize > 50 * 1024 * 1024) {
       return NextResponse.json(
         { error: 'الحجم الإجمالي يتجاوز 50 ميجابايت' },
-        { status: 413 },
+        { status: 413, headers: corsHeaders() },
       );
     }
 
@@ -37,61 +51,96 @@ export async function POST(req: NextRequest) {
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     const isSupabase = Boolean(supabaseUrl && serviceKey);
 
-    const urls: { name: string; url: string; size: number }[] = [];
+    // تحميل sharp ديناميكياً (فقط على الخادم)
+    let sharp: any = null;
+    try {
+      sharp = (await import('sharp')).default;
+    } catch {
+      sharp = null;
+    }
+
+    const urls: { name: string; url: string; size: number; originalSize: number; error?: string }[] = [];
 
     for (const file of files) {
-      if (!file.type.startsWith('image/')) continue;
-      if (file.size > 10 * 1024 * 1024) continue;
+      if (!file.type.startsWith('image/')) {
+        urls.push({ name: file.name, url: '', size: 0, originalSize: file.size, error: 'ليس صورة' });
+        continue;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        urls.push({ name: file.name, url: '', size: 0, originalSize: file.size, error: 'حجم الصورة أكبر من 10MB' });
+        continue;
+      }
 
-      const ext = file.type.split('/')[1]?.replace('jpeg', 'jpg') || 'jpg';
-      const safeName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      let buffer = Buffer.from(await file.arrayBuffer());
+      let outType = file.type;
+      let outExt = (file.type.split('/')[1] ?? 'jpg').replace('jpeg', 'jpg');
+
+      // ضغط الصورة وتحويلها إلى WebP
+      if (sharp) {
+        try {
+          buffer = await sharp(buffer)
+            .rotate() // احترام اتجاه EXIF
+            .resize({ width: 1400, height: 1400, fit: 'inside', withoutEnlargement: true })
+            .webp({ quality: 82 })
+            .toBuffer();
+          outType = 'image/webp';
+          outExt = 'webp';
+        } catch {
+          // لو فشل الضغط نكمل بالصورة الأصلية
+        }
+      }
+
+      const safeName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${outExt}`;
+      const path = `${productId ? productId + '/' : ''}${safeName}`;
 
       if (isSupabase) {
-        // رفع إلى Supabase Storage عبر REST API (لا يحتاج مكتبة supabase-js على الخادم)
-        const res = await fetch(
-          `${supabaseUrl}/storage/v1/object/${bucket}/${productId ? productId + '/' : ''}${safeName}`,
-          {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${serviceKey}`,
-              apikey: serviceKey!,
-              'Content-Type': file.type,
-              'x-upsert': 'true',
-            },
-            body: Buffer.from(await file.arrayBuffer()),
+        const res = await fetch(`${supabaseUrl}/storage/v1/object/${bucket}/${path}`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${serviceKey}`,
+            apikey: serviceKey!,
+            'Content-Type': outType,
+            'x-upsert': 'true',
           },
-        );
+          body: buffer,
+        });
         if (!res.ok) {
-          // أضف رسالة الخطأ لكن أكمل باقي الملفات
+          const errText = await res.text().catch(() => '');
+          urls.push({ name: file.name, url: '', size: buffer.length, originalSize: file.size, error: `فشل الرفع: ${res.status} ${errText.slice(0, 80)}` });
           continue;
         }
         urls.push({
           name: file.name,
-          url: `${supabaseUrl}/storage/v1/object/public/${bucket}/${productId ? productId + '/' : ''}${safeName}`,
-          size: file.size,
+          url: `${supabaseUrl}/storage/v1/object/public/${bucket}/${path}`,
+          size: buffer.length,
+          originalSize: file.size,
         });
       } else {
-        // وضع محلي: أعد بيانات الصورة كـ data URL للمعاينة/الديمو
-        const b64 = Buffer.from(await file.arrayBuffer()).toString('base64');
+        // وضع محلي: data URL للمعاينة
         urls.push({
           name: file.name,
-          url: `data:${file.type};base64,${b64}`,
-          size: file.size,
+          url: `data:${outType};base64,${buffer.toString('base64')}`,
+          size: buffer.length,
+          originalSize: file.size,
         });
       }
     }
 
-    return NextResponse.json({
-      success: true,
-      count: urls.length,
-      productId: productId || null,
-      bucket,
-      urls,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        count: urls.filter((u) => u.url).length,
+        productId: productId || null,
+        bucket,
+        compressed: Boolean(sharp),
+        urls,
+      },
+      { headers: corsHeaders() },
+    );
   } catch (e: any) {
     return NextResponse.json(
       { error: e?.message ?? 'فشل الرفع' },
-      { status: 500 },
+      { status: 500, headers: corsHeaders() },
     );
   }
 }
