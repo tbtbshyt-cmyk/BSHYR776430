@@ -149,56 +149,77 @@ export function saveSettings(s: StoreSettings) {
  * استيراد منتجات من مصفوفة كائنات (يدعم حتى 500 منتج).
  * يقبل الحقول: title, price, category, stock, description, image, images, sizes...
  */
-export function bulkImportProducts(rows: Record<string, unknown>[]): { imported: number } {
-  const existing = getDemoProducts();
+export function bulkImportProducts(rows: Record<string, unknown>[]): { imported: number; errors: string[] } {
   const cats = getDemoCategories();
   const catByName = new Map(cats.map((c) => [c.name_ar.toLowerCase(), c.id]));
   const now = Date.now();
-  const added: Product[] = rows.map((row, i) => {
-    const title = String(row.title ?? row.name ?? row.product ?? 'منتج').trim();
-    const price = Number(row.price ?? row.cost ?? 0) || 0;
-    const compare = row.compare_at_price ? Number(row.compare_at_price) : null;
-    const stock = Number(row.stock ?? row.quantity ?? 0) || 0;
-    const catName = String(row.category ?? '').trim().toLowerCase();
-    const category_id = catByName.get(catName) ?? cats[0]?.id ?? null;
-    const imgs: string[] = [];
-    if (typeof row.image === 'string' && row.image) imgs.push(row.image);
-    if (typeof row.images === 'string') imgs.push(...row.images.split(/[,|]/).map((s: string) => s.trim()).filter(Boolean));
-    const sizes =
-      typeof row.sizes === 'string'
-        ? row.sizes.split(',').map((s: string) => s.trim()).filter(Boolean)
+  const added: Product[] = [];
+  const errors: string[] = [];
+
+  rows.forEach((row, i) => {
+    try {
+      const title = String(row.title ?? row.name ?? row.product ?? '').trim();
+      if (!title) { errors.push(`السطر ${i + 2}: اسم المنتج مطلوب`); return; }
+      const price = Number(row.price ?? row.cost ?? 0);
+      if (!price || price <= 0) { errors.push(`السطر ${i + 2}: سعر غير صحيح لـ ${title}`); return; }
+      const stock = Number(row.stock ?? row.quantity ?? 0) || 0;
+      const catName = String(row.category ?? '').trim().toLowerCase();
+      const category_id = catByName.get(catName) ?? cats[0]?.id ?? null;
+      const imgs: string[] = [];
+      for (const key of ['image', 'images', 'image_url', 'photo', 'img']) {
+        const v = row[key];
+        if (typeof v === 'string' && v.trim()) {
+          v.split(/[,|]/).map((x) => x.trim()).filter(Boolean).forEach((x) => {
+            imgs.push(/^https?:\/\//.test(x) ? x : x);
+          });
+        }
+      }
+      const sizes = typeof row.sizes === 'string' && row.sizes.trim()
+        ? row.sizes.split(',').map((x) => x.trim()).filter(Boolean)
         : ['one-size'];
-    return {
-      id: `bulk-${now}-${i}`,
-      title_ar: title,
-      description_ar: row.description ? String(row.description) : null,
-      price,
-      compare_at_price: compare,
-      stock_quantity: stock,
-      category_id,
-      images: imgs.length ? imgs : ['https://placehold.co/800x1000/0f0f0f/c9a24b?text=' + encodeURIComponent(title)],
-      sizes,
-      is_featured: row.featured === true || row.featured === 'true',
-      is_active: row.active !== false && row.active !== 'false',
-      barcode: row.barcode ? String(row.barcode) : null,
-    } as Product;
+      added.push({
+        id: `bulk-${now}-${i}`,
+        title_ar: title,
+        description_ar: row.description ? String(row.description) : null,
+        price,
+        compare_at_price: row.compare_at_price ? Number(row.compare_at_price) : null,
+        stock_quantity: stock,
+        category_id,
+        images: imgs.length ? imgs : ['https://placehold.co/800x1000/0f0f0f/c9a24b?text=' + encodeURIComponent(title)],
+        sizes,
+        is_featured: row.featured === true || row.featured === 'true' || row.featured === '1',
+        is_active: row.active !== false && row.active !== 'false' && row.active !== '0',
+        barcode: row.barcode ? String(row.barcode) : null,
+        sku: row.sku ? String(row.sku) : null,
+        cost_price: row.cost_price ? Number(row.cost_price) : undefined,
+        color: row.color ? String(row.color) : null,
+      } as Product);
+    } catch (e: any) {
+      errors.push(`السطر ${i + 2}: ${e?.message ?? 'خطأ'}`);
+    }
   });
-  for (const p of added) existing.push(p);
+
   write(P.products, [...read<Product[]>(P.products, []), ...added]);
-  return { imported: added.length };
+  return { imported: added.length, errors };
 }
 
-/** تحويل ملف JSON/CSV إلى مصفوفة صفوف */
-export function parseImportFile(text: string, fileName: string): Record<string, unknown>[] {
-  const lower = fileName.toLowerCase();
-  if (lower.endsWith('.json')) {
-    const data = JSON.parse(text);
+export async function parseImportFile(file: File): Promise<Record<string, unknown>[]> {
+  const name = file.name.toLowerCase();
+  if (name.endsWith('.json')) {
+    const data = JSON.parse(await file.text());
     return Array.isArray(data) ? data : [];
   }
-  // CSV
+  if (name.endsWith('.xlsx') || name.endsWith('.xls')) {
+    const XLSX = await import('xlsx');
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type: 'array' });
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    return XLSX.utils.sheet_to_json(sheet, { defval: '' }) as Record<string, unknown>[];
+  }
+  const text = await file.text();
   const lines = text.split(/\r?\n/).filter((l) => l.trim());
   if (lines.length < 2) return [];
-  const headers = lines[0].split(',').map((h) => h.trim());
+  const headers = lines[0].split(',').map((h) => h.trim().toLowerCase());
   return lines.slice(1).map((line) => {
     const cells = line.split(',');
     const row: Record<string, unknown> = {};
