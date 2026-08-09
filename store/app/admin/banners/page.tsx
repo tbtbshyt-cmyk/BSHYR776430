@@ -52,7 +52,7 @@ export default function AdminBannersPage() {
       is_active: true,
       sort_order: banners.length + 1,
     };
-    setBanners([...banners, nb]);
+    setBanners((cur) => [...cur, nb]);
   };
 
   const update = (id: string, patch: Partial<Banner>) =>
