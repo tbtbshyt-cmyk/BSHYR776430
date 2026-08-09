@@ -7,7 +7,7 @@ export const runtime = 'nodejs';
  * في الإنتاج يجب حفظها في جدول push_subscriptions بقاعدة البيانات.
  */
 declare global {
-  // eslint-disable-next-line no-var
+  
   var __push_subs: PushSubscriptionJSON[] | undefined;
 }
 const subs: PushSubscriptionJSON[] = (globalThis.__push_subs ??= []);

@@ -13,7 +13,7 @@ export default function PushCenterPage() {
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
-  const [subscribers, setSubscribers] = useState<number | null>(null);
+
 
   useEffect(() => {
     if (!isPushSupported()) return;
@@ -46,7 +46,7 @@ export default function PushCenterPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'فشل الإرسال');
       setSent({ count: data.sent ?? 0 });
-      setSubscribers(data.sent ?? 0);
+      // عدد المشتركين يظهر عبر رسالة النجاح
       setTitle('');
       setBody('');
       setTimeout(() => setSent(null), 3000);

@@ -79,10 +79,25 @@ export function BulkImageUploader({ products, onDone }: { products: Product[]; o
       try {
         const processed = await processImage(it.file, { maxSize: 1200, quality: 0.82 });
         const match = matchImageToProduct(it.name, products);
+
+        // ارفع الصورة المضغوطة إلى الخادم (يُحفظ في Storage عند ربط Supabase)
+        let storedUrl = processed.dataUrl;
+        try {
+          const form = new FormData();
+          form.append('files', processed.blob, it.name.replace(/\.[^.]+$/, '.webp'));
+          if (match) form.append('productId', match.id);
+          form.append('bucket', 'product-images');
+          const res = await fetch('/api/upload', { method: 'POST', body: form });
+          const data = await res.json();
+          if (res.ok && data.urls?.[0]?.url) storedUrl = data.urls[0].url;
+        } catch {
+          /* نستخدم data URL في وضع الديمو */
+        }
+
         if (match) {
           const product = products.find((p) => p.id === match.id);
           if (product) {
-            const images = Array.from(new Set([...(product.images ?? []), processed.dataUrl]));
+            const images = Array.from(new Set([...(product.images ?? []), storedUrl]));
             await updateProduct(match.id, { images });
             matchedCount++;
           }
