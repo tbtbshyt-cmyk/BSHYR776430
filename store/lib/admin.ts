@@ -229,6 +229,9 @@ export async function createProduct(input: Partial<Product>): Promise<Product> {
     is_featured: input.is_featured ?? false,
     is_active: input.is_active ?? true,
     barcode: input.barcode ?? null,
+    sku: input.sku ?? null,
+    cost_price: input.cost_price,
+    color: input.color ?? null,
   } as Product;
   saveDemoProduct(product);
   return product;

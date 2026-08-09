@@ -2,23 +2,21 @@
 
 import { useRef, useState } from 'react';
 import { Upload, X, Loader2, Image as ImageIcon } from 'lucide-react';
-import { uploadImage } from '@/lib/supabase/upload';
 
 /**
- * رافع صور متعدد: يرفع إلى Supabase Storage في وضع الإنتاج،
- * ويحوّل إلى data URL في الوضع التجريبي. يعرض قائمة صور مع إمكانية الحذف.
+ * رافع صور متعدد.
+ * يستخدم مسار الخادم /api/upload (يضغط ويحفظ) — يعمل في وضع الديمو والإنتاج.
  */
 export function ImageUploader({
-  bucket = 'product-images',
   images,
   onChange,
 }: {
-  bucket?: 'product-images' | 'banners';
   images: string[];
   onChange: (images: string[]) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const handleFiles = async (files: FileList | null) => {
@@ -26,22 +24,43 @@ export function ImageUploader({
     setError(null);
     setUploading(true);
     try {
-      const uploaded: string[] = [];
+      const valid: File[] = [];
       for (const file of Array.from(files)) {
         if (!file.type.startsWith('image/')) {
-          setError('يمكن رفع ملفات الصور فقط');
+          setError('بعض الملفات ليست صوراً وتم تجاهلها');
           continue;
         }
-        if (file.size > 5 * 1024 * 1024) {
-          setError('حجم الصورة يجب أن يكون أقل من 5 ميجابايت');
+        if (file.size > 10 * 1024 * 1024) {
+          setError('بعض الصور أكبر من 10MB وتم تجاهلها');
           continue;
         }
-        const { url } = await uploadImage(bucket, file);
-        uploaded.push(url);
+        valid.push(file);
       }
+      if (valid.length === 0) {
+        setUploading(false);
+        return;
+      }
+
+      const uploaded: string[] = [];
+      // رفع على دفعات لتجنب كبر الحمولة
+      for (let i = 0; i < valid.length; i++) {
+        setProgress(`جارٍ رفع الصورة ${i + 1} من ${valid.length}...`);
+        const form = new FormData();
+        form.append('files', valid[i]);
+        form.append('bucket', 'product-images');
+
+        const res = await fetch('/api/upload', { method: 'POST', body: form });
+        const data = await res.json();
+        if (!res.ok || !data.urls?.[0]?.url) {
+          throw new Error(data?.error ?? `فشل رفع الصورة ${i + 1}`);
+        }
+        uploaded.push(data.urls[0].url);
+      }
+
       if (uploaded.length) onChange([...images, ...uploaded]);
+      setProgress('');
     } catch (e: any) {
-      setError(e?.message ?? 'فشل رفع الصورة');
+      setError(e?.message ?? 'فشل رفع الصور');
     } finally {
       setUploading(false);
       if (inputRef.current) inputRef.current.value = '';
@@ -80,7 +99,10 @@ export function ImageUploader({
           className="flex aspect-square flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gold-400/30 text-stone-400 transition hover:border-gold-400/70 hover:text-gold-300 disabled:opacity-50"
         >
           {uploading ? (
-            <Loader2 size={22} className="animate-spin" />
+            <>
+              <Loader2 size={22} className="animate-spin" />
+              <span className="px-1 text-center text-[10px] leading-tight">{progress || 'جارٍ الرفع...'}</span>
+            </>
           ) : (
             <>
               <Upload size={22} />
@@ -100,9 +122,9 @@ export function ImageUploader({
       />
 
       <p className="mt-2 flex items-center gap-1 text-xs text-stone-500">
-        <ImageIcon size={12} /> الصور المسموحة: JPG, PNG, WebP حتى 5 ميجابايت.
+        <ImageIcon size={12} /> الصور تُضغط وتُرفع تلقائياً. الحد الأقصى 10MB لكل صورة.
       </p>
-      {error && <p className="mt-1 text-xs text-red-400">{error}</p>}
+      {error && <p className="mt-1 rounded-lg bg-red-500/10 p-2 text-xs text-red-300">{error}</p>}
     </div>
   );
 }

@@ -34,15 +34,30 @@ export default function AdminProductsPage() {
 
   const filtered = products.filter((p) => p.title_ar.includes(q.trim()));
 
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
   const onSubmit = async (data: Partial<Product>) => {
-    if (editing) {
-      await updateProduct(editing.id, data);
-      setEditing(null);
-    } else {
-      await createProduct(data);
-      setCreating(false);
+    setSubmitError(null);
+    if (!data.title_ar?.trim()) {
+      setSubmitError('اسم المنتج مطلوب');
+      return;
     }
-    load();
+    if (!data.price || data.price <= 0) {
+      setSubmitError('السعر يجب أن يكون أكبر من صفر');
+      return;
+    }
+    try {
+      if (editing) {
+        await updateProduct(editing.id, data);
+        setEditing(null);
+      } else {
+        await createProduct(data);
+        setCreating(false);
+      }
+      await load();
+    } catch (e: any) {
+      setSubmitError(e?.message ?? 'فشل حفظ المنتج');
+    }
   };
 
   const onDelete = async (id: string) => {
@@ -68,7 +83,8 @@ export default function AdminProductsPage() {
           <p className="text-sm text-stone-400">إضافة وتعديل وحذف المنتجات وإدارة الباركود والاستيراد بالجملة</p>
         </div>
         <button
-          onClick={() => { setCreating(true); setEditing(null); }}
+          type="button"
+          onClick={() => { setCreating(true); setEditing(null); setSubmitError(null); }}
           className="btn-gold !py-2.5"
         >
           <Plus size={18} /> منتج جديد
@@ -85,11 +101,17 @@ export default function AdminProductsPage() {
               {editing ? 'تعديل المنتج' : 'إضافة منتج جديد'}
             </h3>
             <button
-              onClick={() => { setCreating(false); setEditing(null); }}
+              type="button"
+              onClick={() => { setCreating(false); setEditing(null); setSubmitError(null); }}
               className="absolute left-4 top-4 rounded-lg p-2 hover:bg-white/5"
             >
               <X size={18} />
             </button>
+            {submitError && (
+              <div className="mx-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">
+                {submitError}
+              </div>
+            )}
             <Suspense fallback={<div className="p-6 text-center text-stone-400">جاري التحميل...</div>}>
               <ProductForm
                 initial={editing ?? undefined}
@@ -169,13 +191,15 @@ export default function AdminProductsPage() {
                   <td className="py-3">
                     <div className="flex gap-1">
                       <button
-                        onClick={() => { setEditing(p); setCreating(false); }}
+                        type="button"
+                        onClick={() => { setEditing(p); setCreating(false); setSubmitError(null); }}
                         className="rounded-lg p-2 text-blue-300 hover:bg-blue-500/10"
                         title="تعديل"
                       >
                         <Pencil size={16} />
                       </button>
                       <button
+                        type="button"
                         onClick={() => onDelete(p.id)}
                         className="rounded-lg p-2 text-red-400 hover:bg-red-500/10"
                         title="حذف"
