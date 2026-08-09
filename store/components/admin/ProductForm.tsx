@@ -30,9 +30,13 @@ export function ProductForm({
   const [featured, setFeatured] = useState(initial?.is_featured ?? false);
   const [active, setActive] = useState(initial?.is_active ?? true);
   const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError(null);
+    if (!title.trim()) { setFormError('اسم المنتج مطلوب'); return; }
+    if (!price || Number(price) <= 0) { setFormError('السعر غير صحيح'); return; }
     setSaving(true);
     try {
       await onSubmit({
@@ -51,6 +55,8 @@ export function ProductForm({
         is_featured: featured,
         is_active: active,
       });
+    } catch (err: any) {
+      setFormError(err?.message ?? 'فشل حفظ المنتج');
     } finally {
       setSaving(false);
     }
@@ -129,6 +135,12 @@ export function ProductForm({
           منشور (نشط)
         </label>
       </div>
+
+      {formError && (
+        <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">
+          {formError}
+        </div>
+      )}
 
       <div className="flex gap-3 pt-2">
         <button type="submit" disabled={saving} className="btn-gold">

@@ -47,7 +47,15 @@ export function saveDemoProduct(p: Product) {
   const idx = list.findIndex((x) => x.id === p.id);
   if (idx >= 0) list[idx] = p;
   else list.unshift(p);
-  write(P.products, list);
+  try {
+    write(P.products, list);
+  } catch (e: any) {
+    // تجاوز سعة التخزين (غالباً بسبب صور base64 كبيرة)
+    if (e?.name === 'QuotaExceededError' || /quota/i.test(e?.message ?? '')) {
+      throw new Error('لا يمكن حفظ الصورة: حجم البيانات كبير جداً. اربط Supabase للتخزين السحابي.');
+    }
+    throw e;
+  }
 }
 
 export function deleteDemoProduct(id: string) {
