@@ -1,7 +1,76 @@
 -- =====================================================================
---  تهيئة كاملة وآمنة لمحلات أبو بشار
---  انسخ والصق كاملاً في Supabase SQL Editor ثم اضغط Run
+--  محلات أبو بشار — التهيئة الكاملة (نسخة موثوقة)
+--  انسخ هذا الملف كاملاً والصقه في Supabase SQL Editor ثم Run
 -- =====================================================================
+
+-- ===== 00 إصلاح الدوال المتعارضة =====
+-- =====================================================================
+-- إصلاح سريع: إسقاط الدوال القديمة المتعارضة قبل إعادة إنشائها
+-- شغّل هذا الملف أولاً إذا ظهر خطأ:
+--   42P13: cannot change return type of existing function
+-- =====================================================================
+
+DROP FUNCTION IF EXISTS public.admin_dashboard_stats() CASCADE;
+DROP FUNCTION IF EXISTS public.create_order_atomic(TEXT, JSONB, TEXT, DOUBLE PRECISION, DOUBLE PRECISION, BOOLEAN) CASCADE;
+DROP FUNCTION IF EXISTS public.assign_order_to_me(UUID) CASCADE;
+DROP FUNCTION IF EXISTS public.update_order_status(UUID, TEXT) CASCADE;
+DROP FUNCTION IF EXISTS public.mark_delivered(UUID) CASCADE;
+DROP FUNCTION IF EXISTS public.request_cancellation(UUID) CASCADE;
+DROP FUNCTION IF EXISTS public.create_payment(UUID, TEXT, DECIMAL, TEXT, TEXT) CASCADE;
+DROP FUNCTION IF EXISTS public.create_payment(UUID, TEXT, DECIMAL, TEXT, TEXT, TEXT) CASCADE;
+DROP FUNCTION IF EXISTS public.confirm_payment(UUID, TEXT, TEXT) CASCADE;
+DROP FUNCTION IF EXISTS public.review_payment_proof(UUID, TEXT, JSONB) CASCADE;
+DROP FUNCTION IF EXISTS public.get_order_details(UUID) CASCADE;
+DROP FUNCTION IF EXISTS public.set_user_role(UUID, TEXT) CASCADE;
+
+-- رسالة تأكيد
+DO $$
+BEGIN
+  RAISE NOTICE 'تم إسقاط الدوال القديمة. يمكنك الآن تشغيل 02_rpc.sql أو FULL_SETUP.sql بأمان.';
+END $$;
+-- =====================================================================
+--  إصلاح عاجل: تعريف handle_new_user بشكل صحيح
+--  شغّل هذا الملف كاملاً قبل أي شيء
+-- =====================================================================
+
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_phone TEXT;
+    v_name  TEXT;
+BEGIN
+    -- auth.users في هذا المشروع لا تحتوي عمود phone؛
+    -- نعتمد كلياً على raw_user_meta_data
+    v_phone := COALESCE(NEW.raw_user_meta_data->>'phone', NULL);
+    v_name  := COALESCE(NEW.raw_user_meta_data->>'full_name', '');
+
+    IF v_phone IS NULL OR btrim(v_phone) = '' THEN
+        RAISE EXCEPTION 'رقم الهاتف مطلوب لإنشاء الحساب'
+            USING ERRCODE = 'check_violation';
+    END IF;
+
+    INSERT INTO public.profiles (id, full_name, phone)
+    VALUES (NEW.id, v_name, v_phone)
+    ON CONFLICT (id) DO NOTHING;
+
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+    AFTER INSERT ON auth.users
+    FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- تأكيد
+DO $$
+BEGIN
+    RAISE NOTICE 'تم إنشاء handle_new_user بنجاح ✓';
+END $$;
 
 -- ===== sql/01_schema.sql =====
 -- =====================================================================
