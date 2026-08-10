@@ -87,7 +87,7 @@ CREATE POLICY "profiles_insert_via_trigger" ON public.profiles
 DROP TRIGGER IF EXISTS trg_profiles_updated_at ON public.profiles;
 CREATE TRIGGER trg_profiles_updated_at
     BEFORE UPDATE ON public.profiles
-    FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+    FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- محفّز إنشاء ملف شخصي تلقائياً عند تسجيل مستخدم جديد في auth.users
 CREATE OR REPLACE FUNCTION public.handle_new_user()
@@ -100,7 +100,7 @@ DECLARE
     v_phone TEXT;
     v_name  TEXT;
 BEGIN
-    v_phone := COALESCE(NEW.phone, NEW.raw_user_meta_data->>'phone');
+    v_phone := COALESCE(NEW.raw_user_meta_data->>'phone', NULL);
     v_name  := COALESCE(NEW.raw_user_meta_data->>'full_name', '');
 
     IF v_phone IS NULL OR btrim(v_phone) = '' THEN
@@ -146,7 +146,7 @@ CREATE POLICY "categories_staff_write" ON public.categories
 DROP TRIGGER IF EXISTS trg_categories_updated_at ON public.categories;
 CREATE TRIGGER trg_categories_updated_at
     BEFORE UPDATE ON public.categories
-    FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+    FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 CREATE TABLE IF NOT EXISTS public.products (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -177,7 +177,7 @@ CREATE POLICY "products_staff_write" ON public.products
 DROP TRIGGER IF EXISTS trg_products_updated_at ON public.products;
 CREATE TRIGGER trg_products_updated_at
     BEFORE UPDATE ON public.products
-    FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+    FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- =====================================================================
 -- 3. جدول الطلبات وعناصرها والدفع المحلي
@@ -226,7 +226,7 @@ CREATE POLICY "orders_delete_admin_only" ON public.orders
 DROP TRIGGER IF EXISTS trg_orders_updated_at ON public.orders;
 CREATE TRIGGER trg_orders_updated_at
     BEFORE UPDATE ON public.orders
-    FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+    FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- ضبط الطوابع الزمنية للحالة وتحديث deposit_paid من الدفعات
 CREATE OR REPLACE FUNCTION public.handle_order_status_change()
@@ -410,7 +410,7 @@ CREATE POLICY "transactions_update_staff_only" ON public.transactions
 DROP TRIGGER IF EXISTS trg_transactions_updated_at ON public.transactions;
 CREATE TRIGGER trg_transactions_updated_at
     BEFORE UPDATE ON public.transactions
-    FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+    FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- عند نجاح دفعة من نوع عربون/تحويل، يتم تعليم الطلب بأنه مدفوع العربون
 CREATE OR REPLACE FUNCTION public.handle_transaction_paid()
@@ -481,7 +481,7 @@ CREATE POLICY "cart_owner_all" ON public.cart
 DROP TRIGGER IF EXISTS trg_cart_updated_at ON public.cart;
 CREATE TRIGGER trg_cart_updated_at
     BEFORE UPDATE ON public.cart
-    FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+    FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 CREATE INDEX IF NOT EXISTS idx_cart_customer ON public.cart(customer_id);
 

@@ -1,16 +1,9 @@
 -- =====================================================================
--- محلات أبو بشار — التهيئة الكاملة لقاعدة البيانات
--- شغّل الملف كاملاً في Supabase → SQL Editor
--- ترتيب التنفيذ:
---   1) المخطط والجداول
---   2) الدوال والإجراءات (RPC) — ضروري لتشغيل create_order_atomic
---   3) الترقيات والسياسات
---   4) البيانات التجريبية
+-- محلات أبو بشار — التهيئة الكاملة
+-- شغّل كاملاً في Supabase SQL Editor
 -- =====================================================================
 
--- =================================================================
--- 01 المخطط والجداول
--- =================================================================
+-- ===== sql/01_schema.sql =====
 -- =====================================================================
 -- أبو بشار ستورز - المخطط الكامل لقاعدة البيانات (PostgreSQL / Supabase)
 -- يتضمن: الملفات الشخصية، الفئات، المنتجات، الطلبات، عناصر الطلب،
@@ -100,7 +93,7 @@ CREATE POLICY "profiles_insert_via_trigger" ON public.profiles
 DROP TRIGGER IF EXISTS trg_profiles_updated_at ON public.profiles;
 CREATE TRIGGER trg_profiles_updated_at
     BEFORE UPDATE ON public.profiles
-    FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+    FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- محفّز إنشاء ملف شخصي تلقائياً عند تسجيل مستخدم جديد في auth.users
 CREATE OR REPLACE FUNCTION public.handle_new_user()
@@ -113,7 +106,7 @@ DECLARE
     v_phone TEXT;
     v_name  TEXT;
 BEGIN
-    v_phone := COALESCE(NEW.phone, NEW.raw_user_meta_data->>'phone');
+    v_phone := COALESCE(NEW.raw_user_meta_data->>'phone', NULL);
     v_name  := COALESCE(NEW.raw_user_meta_data->>'full_name', '');
 
     IF v_phone IS NULL OR btrim(v_phone) = '' THEN
@@ -159,7 +152,7 @@ CREATE POLICY "categories_staff_write" ON public.categories
 DROP TRIGGER IF EXISTS trg_categories_updated_at ON public.categories;
 CREATE TRIGGER trg_categories_updated_at
     BEFORE UPDATE ON public.categories
-    FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+    FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 CREATE TABLE IF NOT EXISTS public.products (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -190,7 +183,7 @@ CREATE POLICY "products_staff_write" ON public.products
 DROP TRIGGER IF EXISTS trg_products_updated_at ON public.products;
 CREATE TRIGGER trg_products_updated_at
     BEFORE UPDATE ON public.products
-    FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+    FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- =====================================================================
 -- 3. جدول الطلبات وعناصرها والدفع المحلي
@@ -239,7 +232,7 @@ CREATE POLICY "orders_delete_admin_only" ON public.orders
 DROP TRIGGER IF EXISTS trg_orders_updated_at ON public.orders;
 CREATE TRIGGER trg_orders_updated_at
     BEFORE UPDATE ON public.orders
-    FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+    FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- ضبط الطوابع الزمنية للحالة وتحديث deposit_paid من الدفعات
 CREATE OR REPLACE FUNCTION public.handle_order_status_change()
@@ -423,7 +416,7 @@ CREATE POLICY "transactions_update_staff_only" ON public.transactions
 DROP TRIGGER IF EXISTS trg_transactions_updated_at ON public.transactions;
 CREATE TRIGGER trg_transactions_updated_at
     BEFORE UPDATE ON public.transactions
-    FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+    FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- عند نجاح دفعة من نوع عربون/تحويل، يتم تعليم الطلب بأنه مدفوع العربون
 CREATE OR REPLACE FUNCTION public.handle_transaction_paid()
@@ -494,7 +487,7 @@ CREATE POLICY "cart_owner_all" ON public.cart
 DROP TRIGGER IF EXISTS trg_cart_updated_at ON public.cart;
 CREATE TRIGGER trg_cart_updated_at
     BEFORE UPDATE ON public.cart
-    FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+    FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 CREATE INDEX IF NOT EXISTS idx_cart_customer ON public.cart(customer_id);
 
@@ -508,9 +501,22 @@ CREATE INDEX IF NOT EXISTS idx_cart_customer ON public.cart(customer_id);
 --    المحفّزات تخصم المخزون وتحسب الإجمالي تلقائياً.
 -- =====================================================================
 
--- =================================================================
--- 02 الدوال والإجراءات
--- =================================================================
+-- ===== sql/02_rpc.sql =====
+-- =====================================================================
+-- إعداد دوال RPC
+-- يتم حذف أي نسخ قديمة أولاً لتفادي تعارض نوع الإرجاع
+-- =====================================================================
+DROP FUNCTION IF EXISTS public.create_order_atomic(TEXT, JSONB, TEXT, DOUBLE PRECISION, DOUBLE PRECISION, BOOLEAN) CASCADE;
+DROP FUNCTION IF EXISTS public.assign_order_to_me(UUID) CASCADE;
+DROP FUNCTION IF EXISTS public.update_order_status(UUID, TEXT) CASCADE;
+DROP FUNCTION IF EXISTS public.mark_delivered(UUID) CASCADE;
+DROP FUNCTION IF EXISTS public.request_cancellation(UUID) CASCADE;
+DROP FUNCTION IF EXISTS public.create_payment(UUID, TEXT, DECIMAL(12,2)) CASCADE;
+DROP FUNCTION IF EXISTS public.confirm_payment(UUID, TEXT, TEXT) CASCADE;
+DROP FUNCTION IF EXISTS public.get_order_details(UUID) CASCADE;
+DROP FUNCTION IF EXISTS public.set_user_role(UUID, TEXT) CASCADE;
+DROP FUNCTION IF EXISTS public.admin_dashboard_stats() CASCADE;
+
 -- =====================================================================
 -- أبو بشار ستورز - دوال RPC الذكية وقواعد التشغيل
 -- تُشغّل بعد إنشاء المخطط (abubashar_schema.sql)
@@ -1029,9 +1035,7 @@ GRANT EXECUTE ON FUNCTION public.admin_dashboard_stats() TO authenticated;
 --   });
 -- =====================================================================
 
--- =================================================================
--- 03 البانرات والباركود والدفع
--- =================================================================
+-- ===== sql/03_banners.sql =====
 -- =====================================================================
 -- أبو بشار ستورز - ترقية v2
 -- يضيف: جدول البانرات، عمود الباركود للمنتجات،
@@ -1200,9 +1204,7 @@ VALUES
    'ابدأ التسوق', '/products', true, 3)
 ON CONFLICT DO NOTHING;
 
--- =================================================================
--- 04 التحصين الأمني
--- =================================================================
+-- ===== sql/04_security.sql =====
 -- =====================================================================
 -- أبو بشار ستورز - ترقية الأمان الصارمة v3
 -- تجبّ ما يلي بعد تشغيل جميع الملفات السابقة، وتصلّب سياسات RLS:
@@ -1337,9 +1339,7 @@ REVOKE ALL ON FUNCTION public.admin_dashboard_stats() FROM PUBLIC;
 --   SELECT polname, polcmd FROM pg_policy WHERE polrelid::regclass::text LIKE 'public.%';
 -- =====================================================================
 
--- =================================================================
--- 05 مزامنة الأدوار
--- =================================================================
+-- ===== sql/05_roles.sql =====
 -- =====================================================================
 -- مزامنة أدوار الموظفين إلى auth.users.app_metadata
 -- لتمكين Middleware من اتخاذ قرار الحماية دون استعلام قاعدة بيانات إضافي.
@@ -1378,9 +1378,7 @@ UPDATE public.profiles SET role = role;
 
 GRANT EXECUTE ON FUNCTION public.sync_role_to_app_metadata() TO authenticated;
 
--- =================================================================
--- 06 الفهارس والتوسع
--- =================================================================
+-- ===== sql/06_scaling.sql =====
 -- =====================================================================
 -- أبو بشار ستورز - ترقية توسيع قاعدة البيانات v5
 -- فهارس أداء، تحسينات استعلامات، وتجهيز للنمو العالي.
@@ -1520,9 +1518,7 @@ CREATE TRIGGER trg_log_order_status
 --   SELECT indexname, tablename FROM pg_indexes WHERE schemaname='public';
 -- =====================================================================
 
--- =================================================================
--- 07 سياسات التخزين
--- =================================================================
+-- ===== sql/07_storage.sql =====
 -- =====================================================================
 -- أبو بشار ستورز - سياسات التخزين (Storage) v6
 -- ينشئ حاويات الصور ويضيف سياسات الرفع/القراءة الآمنة.
@@ -1614,9 +1610,7 @@ CREATE TRIGGER trg_check_image_upload
 --     ('product-images','banners','payment-proofs');
 -- =====================================================================
 
--- =================================================================
--- 08 الحملات والتسويق
--- =================================================================
+-- ===== sql/08_marketing.sql =====
 -- =====================================================================
 -- أبو بشار جوال - v7: الحملات التسويقية وتوسيع قاعدة البيانات
 -- آمن للتشغيل المتكرر.
@@ -1743,9 +1737,7 @@ ANALYZE public.orders;
 -- انتهت الترقية v7.
 -- =====================================================================
 
--- =================================================================
--- 09 الذكاء الاصطناعي والواتساب
--- =================================================================
+-- ===== sql/09_ai.sql =====
 -- =====================================================================
 -- أبو بشار جوال - v8: إدارة الذكاء الاصطناعي وإتمام الطلب عبر واتساب
 -- آمن للتشغيل المتكرر.
@@ -1794,9 +1786,7 @@ CREATE TRIGGER trg_touch_ai_settings BEFORE UPDATE ON public.ai_settings
 -- مشفّراً (api_key_encrypted) ولا يعود للواجهة بعد إدخاله.
 -- =====================================================================
 
--- =================================================================
--- 10 بيانات تجريبية
--- =================================================================
+-- ===== sql/10_seed.sql =====
 -- =====================================================================
 -- أبو بشار ستورز - البيانات التجريبية (Seed Data)
 -- تُشغّل بعد abubashar_schema.sql ثم abubashar_rpc.sql
