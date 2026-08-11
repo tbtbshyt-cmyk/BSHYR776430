@@ -1,9 +1,10 @@
 -- =====================================================================
 --  محلات أبو بشار — التهيئة الكاملة (نسخة موثوقة)
 --  انسخ كاملاً والصق في Supabase SQL Editor ثم Run
+--  تم ترتيب المحتوى: جداول → دوال → سياسات → بيانات
 -- =====================================================================
 
--- ===== 00 إصلاح الدوال المتعارضة =====
+-- ===== 00 إسقاط الدوال المتعارضة =====
 -- =====================================================================
 -- إصلاح سريع: إسقاط الدوال القديمة المتعارضة قبل إعادة إنشائها
 -- شغّل هذا الملف أولاً إذا ظهر خطأ:
@@ -86,35 +87,6 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 -- 0. دوال مساعدة للأدوار والصلاحيات
 -- =====================================================================
 
-CREATE OR REPLACE FUNCTION public.current_role_name()
-RETURNS TEXT
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-    SELECT role FROM public.profiles WHERE id = auth.uid();
-$$;
-
-CREATE OR REPLACE FUNCTION public.is_admin()
-RETURNS BOOLEAN
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-    SELECT COALESCE(current_role_name() = 'admin', false);
-$$;
-
--- الموظفون: مدير، مسؤول، عامل توصيل
-CREATE OR REPLACE FUNCTION public.is_staff()
-RETURNS BOOLEAN
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-    SELECT COALESCE(current_role_name() IN ('admin', 'manager', 'delivery'), false);
 $$;
 
 -- دالة عامة لتحديث عمود updated_at تلقائياً
@@ -126,6 +98,21 @@ BEGIN
     NEW.updated_at = NOW();
     RETURN NEW;
 END;
+$$;
+
+
+-- دوال الأدوار (تعريف مبدئي آمن — تُعاد كتابتها لاحقاً بعد إنشاء الجداول)
+CREATE OR REPLACE FUNCTION public.current_role_name() RETURNS TEXT
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+    SELECT NULL::text;
+$$;
+CREATE OR REPLACE FUNCTION public.is_admin() RETURNS BOOLEAN
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+    SELECT false;
+$$;
+CREATE OR REPLACE FUNCTION public.is_staff() RETURNS BOOLEAN
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+    SELECT false;
 $$;
 
 -- =====================================================================
@@ -253,6 +240,36 @@ DROP TRIGGER IF EXISTS trg_products_updated_at ON public.products;
 CREATE TRIGGER trg_products_updated_at
     BEFORE UPDATE ON public.products
     FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+CREATE OR REPLACE FUNCTION public.current_role_name()
+RETURNS TEXT
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+    SELECT role FROM public.profiles WHERE id = auth.uid();
+$$;
+
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+    SELECT COALESCE(current_role_name() = 'admin', false);
+$$;
+
+-- الموظفون: مدير، مسؤول، عامل توصيل
+CREATE OR REPLACE FUNCTION public.is_staff()
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+    SELECT COALESCE(current_role_name() IN ('admin', 'manager', 'delivery'), false);
 
 -- =====================================================================
 -- 3. جدول الطلبات وعناصرها والدفع المحلي

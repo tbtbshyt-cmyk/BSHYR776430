@@ -11,35 +11,6 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 -- 0. دوال مساعدة للأدوار والصلاحيات
 -- =====================================================================
 
-CREATE OR REPLACE FUNCTION public.current_role_name()
-RETURNS TEXT
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-    SELECT role FROM public.profiles WHERE id = auth.uid();
-$$;
-
-CREATE OR REPLACE FUNCTION public.is_admin()
-RETURNS BOOLEAN
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-    SELECT COALESCE(current_role_name() = 'admin', false);
-$$;
-
--- الموظفون: مدير، مسؤول، عامل توصيل
-CREATE OR REPLACE FUNCTION public.is_staff()
-RETURNS BOOLEAN
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-    SELECT COALESCE(current_role_name() IN ('admin', 'manager', 'delivery'), false);
 $$;
 
 -- دالة عامة لتحديث عمود updated_at تلقائياً
@@ -53,12 +24,27 @@ BEGIN
 END;
 $$;
 
+
+-- دوال الأدوار (تعريف مبدئي آمن — تُعاد كتابتها لاحقاً بعد إنشاء الجداول)
+CREATE OR REPLACE FUNCTION public.current_role_name() RETURNS TEXT
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+    SELECT NULL::text;
+$$;
+CREATE OR REPLACE FUNCTION public.is_admin() RETURNS BOOLEAN
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+    SELECT false;
+$$;
+CREATE OR REPLACE FUNCTION public.is_staff() RETURNS BOOLEAN
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+    SELECT false;
+$$;
+
 -- =====================================================================
 -- 1. جدول المستخدمين والصلاحيات (Profiles & RBAC)
 -- =====================================================================
 
 CREATE TABLE IF NOT EXISTS public.profiles (
-    id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
+    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     full_name TEXT NOT NULL,
     phone TEXT UNIQUE NOT NULL,
     role TEXT NOT NULL DEFAULT 'customer'
@@ -100,7 +86,7 @@ DECLARE
     v_phone TEXT;
     v_name  TEXT;
 BEGIN
-    v_phone := COALESCE(NEW.phone, NEW.raw_user_meta_data->>'phone');
+    v_phone := COALESCE(NEW.raw_user_meta_data->>'phone', NULL);
     v_name  := COALESCE(NEW.raw_user_meta_data->>'full_name', '');
 
     IF v_phone IS NULL OR btrim(v_phone) = '' THEN
@@ -178,6 +164,36 @@ DROP TRIGGER IF EXISTS trg_products_updated_at ON public.products;
 CREATE TRIGGER trg_products_updated_at
     BEFORE UPDATE ON public.products
     FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+CREATE OR REPLACE FUNCTION public.current_role_name()
+RETURNS TEXT
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+    SELECT role FROM public.profiles WHERE id = auth.uid();
+$$;
+
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+    SELECT COALESCE(current_role_name() = 'admin', false);
+$$;
+
+-- الموظفون: مدير، مسؤول، عامل توصيل
+CREATE OR REPLACE FUNCTION public.is_staff()
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+    SELECT COALESCE(current_role_name() IN ('admin', 'manager', 'delivery'), false);
 
 -- =====================================================================
 -- 3. جدول الطلبات وعناصرها والدفع المحلي

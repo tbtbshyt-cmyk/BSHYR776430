@@ -1,4 +1,19 @@
 -- =====================================================================
+-- إعداد دوال RPC
+-- يتم حذف أي نسخ قديمة أولاً لتفادي تعارض نوع الإرجاع
+-- =====================================================================
+DROP FUNCTION IF EXISTS public.create_order_atomic(TEXT, JSONB, TEXT, DOUBLE PRECISION, DOUBLE PRECISION, BOOLEAN) CASCADE;
+DROP FUNCTION IF EXISTS public.assign_order_to_me(UUID) CASCADE;
+DROP FUNCTION IF EXISTS public.update_order_status(UUID, TEXT) CASCADE;
+DROP FUNCTION IF EXISTS public.mark_delivered(UUID) CASCADE;
+DROP FUNCTION IF EXISTS public.request_cancellation(UUID) CASCADE;
+DROP FUNCTION IF EXISTS public.create_payment(UUID, TEXT, DECIMAL(12,2)) CASCADE;
+DROP FUNCTION IF EXISTS public.confirm_payment(UUID, TEXT, TEXT) CASCADE;
+DROP FUNCTION IF EXISTS public.get_order_details(UUID) CASCADE;
+DROP FUNCTION IF EXISTS public.set_user_role(UUID, TEXT) CASCADE;
+DROP FUNCTION IF EXISTS public.admin_dashboard_stats() CASCADE;
+
+-- =====================================================================
 -- أبو بشار ستورز - دوال RPC الذكية وقواعد التشغيل
 -- تُشغّل بعد إنشاء المخطط (abubashar_schema.sql)
 -- =====================================================================
