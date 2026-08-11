@@ -58,7 +58,7 @@ $$;
 -- =====================================================================
 
 CREATE TABLE IF NOT EXISTS public.profiles (
-    id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
+    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     full_name TEXT NOT NULL,
     phone TEXT UNIQUE NOT NULL,
     role TEXT NOT NULL DEFAULT 'customer'
