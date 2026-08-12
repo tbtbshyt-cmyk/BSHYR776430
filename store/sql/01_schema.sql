@@ -7,12 +7,6 @@
 -- امتداد لتوليد المعرّفات (مُفعّل افتراضياً في Supabase)
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
--- =====================================================================
--- 0. دوال مساعدة للأدوار والصلاحيات
--- =====================================================================
-
-$$;
-
 -- دالة عامة لتحديث عمود updated_at تلقائياً
 CREATE OR REPLACE FUNCTION public.set_updated_at()
 RETURNS TRIGGER
@@ -25,9 +19,43 @@ END;
 $$;
 
 
--- =====================================================================
--- 1. جدول المستخدمين والصلاحيات (Profiles & RBAC)
--- =====================================================================
+CREATE OR REPLACE FUNCTION public.current_role_name()
+RETURNS TEXT
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+    RETURN role FROM public.profiles WHERE id = auth.uid();
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+    RETURN COALESCE(current_role_name() = 'admin', false);
+END;
+$$;
+
+-- الموظفون: مدير، مسؤول، عامل توصيل
+CREATE OR REPLACE FUNCTION public.is_staff()
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+    RETURN COALESCE(current_role_name() IN ('admin', 'manager', 'delivery'), false);
+END;
+$$;
+
 
 CREATE TABLE IF NOT EXISTS public.profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -62,6 +90,16 @@ CREATE TRIGGER trg_profiles_updated_at
     FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
 -- محفّز إنشاء ملف شخصي تلقائياً عند تسجيل مستخدم جديد في auth.users
+
+
+
+
+
+
+-- =====================================================================
+-- 1. جدول المستخدمين والصلاحيات (Profiles & RBAC)
+-- =====================================================================
+
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -90,37 +128,6 @@ DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
     AFTER INSERT ON auth.users
     FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
-
-CREATE OR REPLACE FUNCTION public.current_role_name()
-RETURNS TEXT
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-    SELECT role FROM public.profiles WHERE id = auth.uid();
-$$;
-
-CREATE OR REPLACE FUNCTION public.is_admin()
-RETURNS BOOLEAN
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-    SELECT COALESCE(current_role_name() = 'admin', false);
-$$;
-
--- الموظفون: مدير، مسؤول، عامل توصيل
-CREATE OR REPLACE FUNCTION public.is_staff()
-RETURNS BOOLEAN
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-    SELECT COALESCE(current_role_name() IN ('admin', 'manager', 'delivery'), false);
-$$;
 
 -- =====================================================================
 -- 2. جدول الفئات والمنتجات الفاخرة (Categories & Products)
